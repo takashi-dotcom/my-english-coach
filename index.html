@@ -157,6 +157,10 @@
     .now-playing { min-height: 67px; padding: 14px 3px 13px; }
     .playing-big { font-size: clamp(17px, 4.7vw, 21px); }
     .playing-sub { font-size: 12px; margin-top: 5px; }
+    .shuffle-row { display:flex; align-items:center; justify-content:flex-end; margin:8px 0 -2px; }
+    .shuffle-chip { min-height:35px; padding:5px 12px; border:1px solid var(--line); border-radius:30px; background:var(--surface-alt); color:var(--sub); font-size:12px; font-weight:760; }
+    .shuffle-chip.active { color:var(--primary); background:var(--accent); border-color:var(--primary); }
+    .shuffle-chip:disabled { opacity:.65; }
     .control-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
     .control-button { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; min-width: 0; min-height: 57px; padding: 4px 0; color: var(--text); background: var(--surface-alt); border: 1px solid var(--line); border-radius: 11px; }
     .control-button .control-symbol { font-size: 22px; line-height: 1.2; font-weight: 800; }
@@ -200,7 +204,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.0.2</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.1</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -211,6 +215,7 @@
       <span id="position" class="question-no">0 / 3 問</span>
     </div>
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="shuffle-row"><button type="button" id="shuffle-toggle" class="shuffle-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム OFF</button></div>
     <div class="now-playing">
       <p id="display-text" class="playing-big">準備完了！</p>
       <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
@@ -440,7 +445,7 @@
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, reviewKeys: [], repeatMode: 'off', repeatSentenceKey: '', repeatSegment: '', hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, reviewKeys: [], repeatMode: 'off', repeatSentenceKey: '', repeatSegment: '', shuffle: false, hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
@@ -460,6 +465,7 @@
     previewJapanese: $('preview-japanese'), reloadJapaneseVoices: $('reload-japanese-voices'),
     reloadVoices: $('reload-voices'), hideText: $('hide-text'),
     start: $('start'), stop: $('stop'), notice: $('notice'),
+    shuffleToggle: $('shuffle-toggle'),
     repeatToggle: $('repeat-toggle'), repeatControls: $('repeat-controls'),
     settingsBrief: $('settings-brief'), pauseSymbol: $('pause-symbol'), pauseCaption: $('pause-caption'),
     repeatMode: $('repeat-mode'), repeatSentence: $('repeat-sentence'),
@@ -477,6 +483,7 @@
   let runId = 0; // 停止や移動時には番号を変更して古い処理を終了する
   let playbackSession = null; // 今の教材・設定・問題番号を維持する
   let isPaused = false;
+  let shuffleEnabled = false;
   let repeatMode = 'off';
   let repeatSentenceKey = '';
   let repeatSegment = '';
@@ -548,7 +555,7 @@
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
       libraryName: ui.libraryName.value, hideText: ui.hideText.checked,
       reviewOnly, reviewKeys: [...reviewKeys],
-      repeatMode, repeatSentenceKey, repeatSegment
+      repeatMode, repeatSentenceKey, repeatSegment, shuffle: shuffleEnabled
     };
   }
 
@@ -692,6 +699,47 @@
     save();
   }
 
+  // Fisher–Yates: ペアとなる日本語訳を保ったまま選ばれた問題を並べ替える。
+  function shuffleItems(items) {
+    const result = items.slice();
+    for (let index = result.length - 1; index > 0; index--) {
+      const chosen = Math.floor(Math.random() * (index + 1));
+      [result[index], result[chosen]] = [result[chosen], result[index]];
+    }
+    return result;
+  }
+
+  function shuffleCycleInPlace(items) {
+    if (items.length <= 1) return;
+    const old = items.slice();
+    const next = shuffleItems(items);
+    // 2問以上なら周回時に完全に同じ順序が連続するのを避ける。
+    if (next.every((item, index) => item === old[index])) {
+      [next[0], next[1]] = [next[1], next[0]];
+    }
+    items.splice(0, items.length, ...next);
+  }
+
+  function updateShuffleUI() {
+    ui.shuffleToggle.textContent = shuffleEnabled ? '🔀 ランダム ON' : '🔀 ランダム OFF';
+    ui.shuffleToggle.classList.toggle('active', shuffleEnabled);
+    ui.shuffleToggle.setAttribute('aria-pressed', String(shuffleEnabled));
+    ui.shuffleToggle.setAttribute('aria-label', shuffleEnabled
+      ? 'ランダム再生をオフにする' : 'ランダム再生をオンにする');
+    ui.shuffleToggle.disabled = isPlaying;
+    updateSettingsSummary();
+  }
+
+  function toggleShuffle() {
+    if (isPlaying) return;
+    shuffleEnabled = !shuffleEnabled;
+    updateShuffleUI();
+    save();
+    setNotice(shuffleEnabled
+      ? 'ランダム再生をオンにしました。次の再生から問題の順番を混ぜます。'
+      : '順番どおりの再生に戻しました。');
+  }
+
   function backupMessage(message, error = false) {
     ui.backupStatus.textContent = message;
     ui.backupStatus.dataset.type = error ? 'error' : 'normal';
@@ -770,6 +818,7 @@
         typeof a.voice !== 'string' || a.voice.length > 300 ||
         typeof a.japaneseVoice !== 'string' || a.japaneseVoice.length > 300 ||
         typeof a.hideText !== 'boolean' ||
+        (a.shuffle !== undefined && typeof a.shuffle !== 'boolean') ||
         (a.repeatMode !== undefined && !['off', 'all', 'sentence', 'segment'].includes(a.repeatMode)) ||
         (a.repeatSentenceKey !== undefined && (typeof a.repeatSentenceKey !== 'string' || a.repeatSentenceKey.length > 2000)) ||
         (a.repeatSegment !== undefined && (typeof a.repeatSegment !== 'string' || a.repeatSegment.length > 500)) ||
@@ -793,7 +842,8 @@
       reviewOnly: a.reviewOnly === true, reviewKeys: Array.isArray(a.reviewKeys) ? [...new Set(a.reviewKeys)] : [],
       repeatMode: ['off', 'all', 'sentence', 'segment'].includes(a.repeatMode) ? a.repeatMode : 'off',
       repeatSentenceKey: typeof a.repeatSentenceKey === 'string' ? a.repeatSentenceKey : '',
-      repeatSegment: typeof a.repeatSegment === 'string' ? a.repeatSegment : ''
+      repeatSegment: typeof a.repeatSegment === 'string' ? a.repeatSegment : '',
+      shuffle: a.shuffle === true
     };
     return { settings, library: normalized };
   }
@@ -1207,6 +1257,7 @@
     document.body.classList.toggle('listening-private', value && ui.hideText.checked);
     ui.start.disabled = value;
     ui.stop.disabled = !value;
+    ui.shuffleToggle.disabled = value;
     ui.repeatMode.disabled = value;
     ui.repeatSentence.disabled = value || repeatMode !== 'sentence';
     ui.repeatSegment.disabled = value || repeatMode !== 'segment';
@@ -1231,7 +1282,7 @@
 
   function updateSettingsSummary() {
     const modeLabel = inputMode === 'english' ? '英語のみ' : (ui.mode.value === 'study' ? '学習' : 'テスト');
-    ui.settingsBrief.textContent = `${modeLabel} · ${ui.rate.value}× · ${ui.repeats.value}回 · ${ui.gap.value}秒`;
+    ui.settingsBrief.textContent = `${modeLabel} · ${ui.rate.value}× · ${ui.repeats.value}回 · ${ui.gap.value}秒${shuffleEnabled ? ' · 🔀' : ''}`;
   }
 
   function updateValidationButtonsOnly() {
@@ -1448,6 +1499,8 @@
       if (!settings.loop) break;
       if (settings.gap > 0 && !(await sleep(settings.gap * 1000, token, 'リピートまで'))) return;
       if (isPaused && !(await waitWhilePaused(token))) return;
+      // 教材全体のループだけ、周回ごとに出題順を新しくする。
+      if (settings.shuffle && items.length > 1) shuffleCycleInPlace(items);
       cycleStart = 0;
       finished = 0;
       total = items.length * settings.repeats + ((answersEach || answersEnd) ? items.length : 0);
@@ -1534,7 +1587,9 @@
     const { items, errors } = updateValidation();
     if (!hasSpeech) { setNotice('このブラウザは音声読み上げに対応していません。Safariで開いてください。', 'error'); return; }
     if (errors.length || items.length === 0) { setNotice('教材の入力エラーを先に修正してください。', 'error'); return; }
-    const playItems = repeatTargets(items);
+    const candidates = repeatTargets(items);
+    const shuffleThisSession = shuffleEnabled && repeatMode !== 'sentence' && repeatMode !== 'segment';
+    const playItems = shuffleThisSession ? shuffleItems(candidates) : candidates;
     if (!playItems.length) {
       setNotice('復習する英文にチェックを付けてください。', 'error'); return;
     }
@@ -1546,7 +1601,8 @@
       gap: Number(ui.gap.value), hideText: ui.hideText.checked, voice: getVoice(),
       japaneseVoice: getJapaneseVoice(), mode: inputMode === 'english' ? 'test' : ui.mode.value,
       answerTiming: inputMode === 'english' ? 'none' : ui.answerTiming.value,
-      loop: repeatMode !== 'off'
+      loop: repeatMode !== 'off',
+      shuffle: shuffleThisSession
     };
     if (repeatMode === 'sentence' || repeatMode === 'segment') {
       settings.mode = 'test';
@@ -1570,6 +1626,7 @@
   }
 
   const stored = getSaved();
+  shuffleEnabled = stored.shuffle === true;
   repeatMode = ['off', 'all', 'sentence', 'segment'].includes(stored.repeatMode) ? stored.repeatMode : 'off';
   repeatSentenceKey = typeof stored.repeatSentenceKey === 'string' ? stored.repeatSentenceKey : '';
   repeatSegment = typeof stored.repeatSegment === 'string' ? stored.repeatSegment : '';
@@ -1598,7 +1655,9 @@
   updateModeInfo();
   updateFormatUI();
   updateValidation();
+  updateShuffleUI();
 
+  ui.shuffleToggle.addEventListener('click', toggleShuffle);
   ui.repeatToggle.addEventListener('click', () => {
     ui.repeatControls.hidden = !ui.repeatControls.hidden;
     ui.repeatToggle.setAttribute('aria-expanded', String(!ui.repeatControls.hidden));
