@@ -161,6 +161,25 @@
     .shuffle-chip { min-height:35px; padding:5px 12px; border:1px solid var(--line); border-radius:30px; background:var(--surface-alt); color:var(--sub); font-size:12px; font-weight:760; }
     .shuffle-chip.active { color:var(--primary); background:var(--accent); border-color:var(--primary); }
     .shuffle-chip:disabled { opacity:.65; }
+    .study-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+    .study-stat { padding:12px; border-radius:12px; background:var(--surface-alt); }
+    .study-stat strong { display:block; font-size:23px; font-variant-numeric:tabular-nums; }
+    .study-stat span { color:var(--sub); font-size:11px; }
+    .study-chart { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; align-items:end; margin:13px 0 6px; }
+    .study-day { display:flex; flex-direction:column; gap:4px; align-items:center; min-width:0; }
+    .study-day .bar-track { width:100%; max-width:32px; height:55px; display:flex; align-items:end; background:var(--surface-alt); border-radius:6px; overflow:hidden; }
+    .study-day .bar { display:block; width:100%; background:var(--primary); border-radius:6px 6px 0 0; }
+    .study-day small { color:var(--sub); font-size:10px; }
+    .mastery-list { max-height:365px; overflow:auto; display:grid; gap:8px; margin-top:12px; }
+    .mastery-row { padding:11px; border:1px solid var(--line); border-radius:12px; }
+    .mastery-en { font-size:13px; line-height:1.5; font-weight:680; overflow-wrap:anywhere; }
+    .mastery-info { font-size:11px; color:var(--sub); margin:5px 0 8px; }
+    .mastery-actions { display:flex; gap:8px; }
+    .mastery-choice { flex:1; min-height:42px; padding:6px; border:1px solid var(--line); border-radius:10px; background:var(--surface-alt); color:var(--text); font-size:12px; font-weight:690; }
+    .mastery-choice.selected { border-color:var(--primary); color:var(--primary); background:var(--accent); }
+    .mastery-choice:disabled { opacity:.45; }
+    .progress-note { margin-top:12px; font-size:12px; line-height:1.7; color:var(--sub); }
+    .progress-note[data-error="true"] { color:var(--error); }
     .control-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
     .control-button { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; min-width: 0; min-height: 57px; padding: 4px 0; color: var(--text); background: var(--surface-alt); border: 1px solid var(--line); border-radius: 11px; }
     .control-button .control-symbol { font-size: 22px; line-height: 1.2; font-weight: 800; }
@@ -204,7 +223,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.1</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.2</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -378,10 +397,32 @@
     </details>
   </section>
 
+  <section class="card fold-card" id="progress-card" aria-labelledby="progress-title">
+    <details id="progress-details">
+      <summary class="fold-summary">
+        <span class="fold-heading" id="progress-title">05　学習記録・習熟度</span>
+        <span class="fold-meta" id="progress-brief">今日 0回 · 理解 0文</span>
+      </summary>
+      <div class="fold-content">
+        <div class="study-stat-grid">
+          <div class="study-stat"><strong id="stat-today">0</strong><span>今日の英語読み上げ回数</span></div>
+          <div class="study-stat"><strong id="stat-unique">0</strong><span>今日聴いた異なる英文</span></div>
+          <div class="study-stat"><strong id="stat-total">0</strong><span>これまでの読み上げ回数</span></div>
+          <div class="study-stat"><strong id="stat-known">0</strong><span>理解できた英文（自己評価）</span></div>
+        </div>
+        <p class="progress-note">過去7日間の読み上げ回数</p>
+        <div id="study-chart" class="study-chart" aria-label="過去7日間の学習記録"></div>
+        <p class="progress-note" id="mastery-summary">各英文の理解度は、自分で評価できます。</p>
+        <div id="mastery-list" class="mastery-list" aria-label="英文ごとの理解度"></div>
+        <p id="progress-notice" class="progress-note" role="status" aria-live="polite" data-error="false">聞いただけでは「理解できた」にはなりません。聴き取れたかどうかを自分で選んでください。評価は別教材にも引き継がれます。</p>
+      </div>
+    </details>
+  </section>
+
   <section class="card fold-card" id="library-card" aria-labelledby="library-title">
     <details id="library-details">
       <summary class="fold-summary">
-        <span class="fold-heading" id="library-title">05　教材ライブラリ</span>
+        <span class="fold-heading" id="library-title">06　教材ライブラリ</span>
         <span class="fold-meta"><span class="count" id="library-count">保存済み 0件</span></span>
       </summary>
       <div class="fold-content">
@@ -410,11 +451,11 @@
   <section class="card fold-card" id="backup-card" aria-labelledby="backup-title">
     <details id="backup-details">
       <summary class="fold-summary">
-        <span class="fold-heading" id="backup-title">06　バックアップ・復元</span>
+        <span class="fold-heading" id="backup-title">07　バックアップ・復元</span>
         <span class="fold-meta">保存・復元</span>
       </summary>
       <div class="fold-content">
-    <p class="backup-hint">保存済み教材・入力途中の英文・読み上げ設定をひとまとめにします。</p>
+    <p class="backup-hint">保存済み教材・入力途中の英文・読み上げ設定・学習記録をひとまとめにします。</p>
     <div class="library-row">
       <button type="button" class="library-btn library-primary" id="backup-export">⬇ バックアップ保存</button>
       <button type="button" class="library-btn" id="backup-import">⬆ ファイルから復元</button>
@@ -428,7 +469,7 @@
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
-    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習チェックもバックアップに含まれます。バックアップを定期的に保存してください。<br>
+    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習チェックと学習記録もバックアップに含まれます。バックアップを定期的に保存してください。<br>
     ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
@@ -439,6 +480,7 @@
   // 前版と同じキーを使用して、保存した教材と設定を引き継ぐ。
   const STORAGE_KEY = 'my-english-coach-prototype-v01';
   const LIBRARY_KEY = 'my-english-coach-library-v01';
+  const PROGRESS_KEY = 'my-english-coach-progress-v01';
   const BACKUP_SIGNATURE = 'my-english-coach-backup';
   const EXAMPLE = [
     'The train is late. | 電車が遅れています。',
@@ -465,6 +507,10 @@
     previewJapanese: $('preview-japanese'), reloadJapaneseVoices: $('reload-japanese-voices'),
     reloadVoices: $('reload-voices'), hideText: $('hide-text'),
     start: $('start'), stop: $('stop'), notice: $('notice'),
+    progressDetails: $('progress-details'), progressBrief: $('progress-brief'),
+    statToday: $('stat-today'), statUnique: $('stat-unique'), statTotal: $('stat-total'),
+    statKnown: $('stat-known'), studyChart: $('study-chart'), masterySummary: $('mastery-summary'),
+    masteryList: $('mastery-list'), progressNotice: $('progress-notice'),
     shuffleToggle: $('shuffle-toggle'),
     repeatToggle: $('repeat-toggle'), repeatControls: $('repeat-controls'),
     settingsBrief: $('settings-brief'), pauseSymbol: $('pause-symbol'), pauseCaption: $('pause-caption'),
@@ -501,6 +547,8 @@
   let previewKind = null;
   let library = [];
   let libraryStorageError = false;
+  let progressStorageError = false;
+  let progressData = { version: 1, totalPlays: 0, daily: {}, items: {} };
 
   let reviewOnly = false;
   let reviewKeys = new Set();
@@ -740,6 +788,176 @@
       : '順番どおりの再生に戻しました。');
   }
 
+  function localDay(timestamp = Date.now()) {
+    const d = new Date(timestamp);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function emptyProgress() {
+    return { version: 1, totalPlays: 0, daily: {}, items: {} };
+  }
+
+  function validateProgress(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1 ||
+        !Number.isSafeInteger(value.totalPlays) || value.totalPlays < 0 ||
+        !value.daily || typeof value.daily !== 'object' || Array.isArray(value.daily) ||
+        !value.items || typeof value.items !== 'object' || Array.isArray(value.items)) {
+      throw new Error('学習記録の形式が正しくありません。');
+    }
+    const days = Object.entries(value.daily), entries = Object.entries(value.items);
+    if (days.length > 366 || entries.length > 5000) throw new Error('学習記録の件数が上限を超えています。');
+    for (const [day, info] of days) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !info ||
+          !Number.isSafeInteger(info.plays) || info.plays < 0 ||
+          !Array.isArray(info.unique) || info.unique.length > 2000 ||
+          !info.unique.every(x => typeof x === 'string' && x.length > 0 && x.length <= 2000)) {
+        throw new Error('日ごとの学習記録に問題があります。');
+      }
+    }
+    for (const [key, info] of entries) {
+      if (!key || key.length > 2000 || !info || typeof info !== 'object' ||
+          !['unrated','learning','known'].includes(info.rating) ||
+          !Number.isSafeInteger(info.heard) || info.heard < 0 ||
+          !Number.isSafeInteger(info.streak) || info.streak < 0 ||
+          !Number.isFinite(info.lastHeardAt) || info.lastHeardAt < 0 ||
+          !Number.isFinite(info.lastRatedAt) || info.lastRatedAt < 0) {
+        throw new Error('英文ごとの学習記録に問題があります。');
+      }
+    }
+    return value;
+  }
+
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if (raw === null) return emptyProgress();
+      return validateProgress(JSON.parse(raw));
+    } catch (_) {
+      progressStorageError = true;
+      return emptyProgress();
+    }
+  }
+
+  function saveProgress() {
+    if (progressStorageError) return false;
+    try {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressData));
+      return true;
+    } catch (_) {
+      ui.progressNotice.textContent = '学習記録を保存できませんでした。Safariの保存容量を確認してください。';
+      ui.progressNotice.dataset.error = 'true';
+      return false;
+    }
+  }
+
+  function progressItem(key) {
+    return progressData.items[key] ||
+      { rating: 'unrated', heard: 0, streak: 0, lastHeardAt: 0, lastRatedAt: 0 };
+  }
+
+  function drawProgressOverview() {
+    const today = localDay();
+    const daily = progressData.daily[today] || { plays: 0, unique: [] };
+    const known = Object.values(progressData.items).filter(x => x.rating === 'known').length;
+    const learning = Object.values(progressData.items).filter(x => x.rating === 'learning').length;
+    ui.statToday.textContent = String(daily.plays);
+    ui.statUnique.textContent = String(daily.unique.length);
+    ui.statTotal.textContent = String(progressData.totalPlays);
+    ui.statKnown.textContent = String(known);
+    ui.progressBrief.textContent = `今日 ${daily.plays}回 · 理解 ${known}文`;
+    ui.masterySummary.textContent = `自己評価：理解できた ${known}文 ／ 要復習 ${learning}文。下から今の教材を評価できます。`;
+    ui.studyChart.replaceChildren();
+    const days = Array.from({length: 7}, (_, i) => {
+      const d = new Date();
+      d.setHours(12,0,0,0);
+      d.setDate(d.getDate() - (6-i));
+      return {date:localDay(d.getTime()),label:`${d.getMonth()+1}/${d.getDate()}`};
+    });
+    const max = Math.max(1, ...days.map(x => progressData.daily[x.date]?.plays || 0));
+    for (const day of days) {
+      const plays = progressData.daily[day.date]?.plays || 0;
+      const cell = document.createElement('div'); cell.className = 'study-day';
+      const value = document.createElement('small'); value.textContent = String(plays);
+      const track = document.createElement('div'); track.className = 'bar-track';
+      const bar = document.createElement('span'); bar.className = 'bar';
+      bar.style.height = `${plays ? Math.max(9, Math.round(plays / max * 100)) : 0}%`;
+      track.append(bar);
+      const name = document.createElement('small'); name.textContent = day.label;
+      cell.append(value); cell.append(track); cell.append(name); ui.studyChart.append(cell);
+    }
+  }
+
+  function renderMasteryRows(items = parseMaterials(ui.materials.value).items) {
+    ui.masteryList.replaceChildren();
+    const seen = new Set();
+    for (const item of items) {
+      const key = reviewKey(item.english);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const status = progressItem(key);
+      const row = document.createElement('div'); row.className = 'mastery-row';
+      const en = document.createElement('div'); en.className = 'mastery-en'; en.textContent = item.english;
+      const detail = document.createElement('div'); detail.className = 'mastery-info';
+      detail.textContent = `再生 ${status.heard}回 · ${status.rating === 'known' ? '理解できた' : status.rating === 'learning' ? '要復習' : '未評価'}`;
+      const actions = document.createElement('div'); actions.className = 'mastery-actions';
+      for (const [rating,label] of [['learning','↻ まだ苦手'],['known','✓ 理解できた']]) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'mastery-choice' + (status.rating === rating ? ' selected' : '');
+        button.textContent = label; button.disabled = isPlaying || progressStorageError;
+        button.setAttribute('aria-pressed', String(status.rating === rating));
+        button.addEventListener('click', () => rateMastery(key, rating));
+        actions.append(button);
+      }
+      row.append(en); row.append(detail); row.append(actions); ui.masteryList.append(row);
+    }
+    if (!seen.size) {
+      const p = document.createElement('p'); p.className = 'progress-note';
+      p.textContent = '教材を入力すると、英文ごとに理解度を付けられます。';
+      ui.masteryList.append(p);
+    }
+  }
+
+  function rateMastery(key, rating) {
+    if (isPlaying || progressStorageError || !key || !['learning','known'].includes(rating)) return;
+    const previous = progressItem(key);
+    const now = Date.now();
+    const sameDay = previous.lastRatedAt && localDay(previous.lastRatedAt) === localDay(now);
+    const next = {
+      ...previous, rating, lastRatedAt: now,
+      streak: rating === 'known'
+        ? (previous.rating === 'known' && sameDay ? previous.streak : previous.streak + 1)
+        : 0
+    };
+    progressData.items[key] = next;
+    saveProgress();
+    drawProgressOverview();
+    renderMasteryRows();
+    ui.progressNotice.textContent = rating === 'known'
+      ? '「理解できた」を保存しました。次回の復習にも反映します。'
+      : '「まだ苦手」を保存しました。次回も確認してみよう。';
+    ui.progressNotice.dataset.error = 'false';
+  }
+
+  function recordPlayedEnglish(english) {
+    if (progressStorageError) return;
+    const key = reviewKey(english);
+    if (!key || key.length > 2000) return;
+    const today = localDay();
+    const day = progressData.daily[today] || { plays: 0, unique: [] };
+    if (!progressData.items[key] && Object.keys(progressData.items).length >= 5000) return;
+    const info = progressItem(key);
+    progressData.items[key] = { ...info, heard: info.heard + 1, lastHeardAt: Date.now() };
+    day.plays++;
+    if (!day.unique.includes(key) && day.unique.length < 2000) day.unique.push(key);
+    progressData.daily[today] = day;
+    progressData.totalPlays++;
+    const dates = Object.keys(progressData.daily).sort();
+    while (dates.length > 180) delete progressData.daily[dates.shift()];
+    saveProgress();
+    drawProgressOverview();
+    if (ui.progressDetails.open) renderMasteryRows();
+  }
+
   function backupMessage(message, error = false) {
     ui.backupStatus.textContent = message;
     ui.backupStatus.dataset.type = error ? 'error' : 'normal';
@@ -747,8 +965,8 @@
 
   function exportBackup() {
     if (isPlaying) return;
-    if (libraryStorageError) {
-      backupMessage('保存済み教材の読み取りに問題があるため、データ保護のため書き出しを停止しました。', true);
+    if (libraryStorageError || progressStorageError) {
+      backupMessage('保存データの読み取りに問題があるため、データ保護のため書き出しを停止しました。', true);
       return;
     }
     try {
@@ -757,7 +975,8 @@
         version: 1,
         exportedAt: new Date().toISOString(),
         settings: captureCurrentSettings(),
-        library: library
+        library: library,
+        progress: progressData
       };
       const content = JSON.stringify(payload, null, 2);
       const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
@@ -845,7 +1064,8 @@
       repeatSegment: typeof a.repeatSegment === 'string' ? a.repeatSegment : '',
       shuffle: a.shuffle === true
     };
-    return { settings, library: normalized };
+    const progress = raw.progress === undefined ? emptyProgress() : validateProgress(raw.progress);
+    return { settings, library: normalized, progress };
   }
 
   async function importBackup(event) {
@@ -868,15 +1088,19 @@
       }
       const previousLibrary = localStorage.getItem(LIBRARY_KEY);
       const previousSettings = localStorage.getItem(STORAGE_KEY);
+      const previousProgress = localStorage.getItem(PROGRESS_KEY);
       try {
         localStorage.setItem(LIBRARY_KEY, JSON.stringify(backup.library));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.settings));
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(backup.progress));
       } catch (writeError) {
         try {
           if (previousLibrary === null) localStorage.removeItem(LIBRARY_KEY);
           else localStorage.setItem(LIBRARY_KEY, previousLibrary);
           if (previousSettings === null) localStorage.removeItem(STORAGE_KEY);
           else localStorage.setItem(STORAGE_KEY, previousSettings);
+          if (previousProgress === null) localStorage.removeItem(PROGRESS_KEY);
+          else localStorage.setItem(PROGRESS_KEY, previousProgress);
         } catch (_) {}
         throw new Error('保存容量などの問題で復元できませんでした。現在のデータの状態を確認してください。');
       }
@@ -1069,6 +1293,8 @@
     updateSettingsSummary();
     renderReviewList(items);
     updateRepeatUI(items);
+    drawProgressOverview();
+    renderMasteryRows(items);
     updateValidationButtonsOnly();
     return { items, errors };
   }
@@ -1465,6 +1691,8 @@
           const result = await speakEnglish(items[index].english, settings.rate, settings.voice, token);
           if (token !== runId) return;
           if (!result.ok) throw new Error(result.message || '音声を再生できませんでした。');
+          // 発話が最後まで終わったときだけ記録。日本語音声や試聴は数えない。
+          if (settings.trackFullSentences) recordPlayedEnglish(items[index].english);
           finished++;
           setProgress(finished / total);
 
@@ -1602,7 +1830,8 @@
       japaneseVoice: getJapaneseVoice(), mode: inputMode === 'english' ? 'test' : ui.mode.value,
       answerTiming: inputMode === 'english' ? 'none' : ui.answerTiming.value,
       loop: repeatMode !== 'off',
-      shuffle: shuffleThisSession
+      shuffle: shuffleThisSession,
+      trackFullSentences: repeatMode !== 'segment'
     };
     if (repeatMode === 'sentence' || repeatMode === 'segment') {
       settings.mode = 'test';
@@ -1625,6 +1854,11 @@
     void playback(token, playItems, settings);
   }
 
+  progressData = loadProgress();
+  if (progressStorageError) {
+    ui.progressNotice.textContent = '学習記録を読み取れませんでした。古い記録を守るため、この機能の書き込みを停止しています。';
+    ui.progressNotice.dataset.error = 'true';
+  }
   const stored = getSaved();
   shuffleEnabled = stored.shuffle === true;
   repeatMode = ['off', 'all', 'sentence', 'segment'].includes(stored.repeatMode) ? stored.repeatMode : 'off';
@@ -1657,6 +1891,9 @@
   updateValidation();
   updateShuffleUI();
 
+  ui.progressDetails.addEventListener('toggle', () => {
+    if (ui.progressDetails.open) { drawProgressOverview(); renderMasteryRows(); }
+  });
   ui.shuffleToggle.addEventListener('click', toggleShuffle);
   ui.repeatToggle.addEventListener('click', () => {
     ui.repeatControls.hidden = !ui.repeatControls.hidden;
