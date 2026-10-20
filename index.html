@@ -114,7 +114,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.4</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.5</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -143,6 +143,15 @@
           <option value="study">📖 学習モード（日本語 → 英語）</option>
         </select>
         <small class="mode-help" id="mode-info">英語のみを設定回数読み上げます。</small>
+      </div>
+      <div class="full field">
+        <label for="answer-timing">テストモードの答え合わせ</label>
+        <select id="answer-timing">
+          <option value="end">全問終了後にまとめて日本語で発表</option>
+          <option value="each">1問ごとに日本語で発表</option>
+          <option value="none">日本語の答えを読み上げない</option>
+        </select>
+        <small class="mode-help" id="answer-info">全問の英語が終わった後、日本語の答えを順番に読み上げます。</small>
       </div>
       <div class="field">
         <label for="rate">英語の速度</label>
@@ -191,7 +200,7 @@
         </details>
       </div>
       <div class="field">
-        <label for="japanese-voice">日本語音声（学習モード）</label>
+        <label for="japanese-voice">日本語音声（学習・答え合わせ）</label>
         <div class="inline-control">
           <select id="japanese-voice"><option value="auto">自動（日本語）</option></select>
           <button type="button" id="reload-japanese-voices" class="mini-btn" aria-label="日本語音声一覧を更新">更新</button>
@@ -224,7 +233,7 @@
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
-    ※教材の個別保存・復習モード・テスト終了後の日本語訳一括再生は今後実装します。<br>
+    ※教材の個別保存・復習モードは今後実装します。<br>
     ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
@@ -239,11 +248,11 @@
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
-    mode: $('mode'), modeInfo: $('mode-info'),
+    mode: $('mode'), modeInfo: $('mode-info'), answerTiming: $('answer-timing'), answerInfo: $('answer-info'),
     rate: $('rate'), repeats: $('repeats'), gap: $('gap'), voice: $('voice'),
     voiceInfo: $('voice-info'), voiceList: $('voice-list'), previewVoice: $('preview-voice'),
     japaneseVoice: $('japanese-voice'), japaneseVoiceInfo: $('japanese-voice-info'),
@@ -281,7 +290,7 @@
     const data = {
       text: ui.materials.value, rate: ui.rate.value, repeats: ui.repeats.value,
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
-      mode: ui.mode.value, hideText: ui.hideText.checked
+      mode: ui.mode.value, answerTiming: ui.answerTiming.value, hideText: ui.hideText.checked
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
     catch (_) { /* プライベートモードや空き容量不足時も再生は利用可能 */ }
@@ -346,9 +355,18 @@
   function voiceId(voice) { return `${voice.lang}::${voice.name}::${voice.voiceURI}`; }
 
   function updateModeInfo() {
-    ui.modeInfo.textContent = ui.mode.value === 'study'
-      ? '各問題で日本語訳を1回、その後で英語を設定回数読み上げます。'
-      : '英語のみを設定回数読み上げます。日本語訳は流れません。';
+    const inTest = ui.mode.value === 'test';
+    ui.modeInfo.textContent = inTest
+      ? '英語を設定回数読み上げ、選択したタイミングで日本語の答え合わせをします。'
+      : '各問題で日本語訳を1回、その後で英語を設定回数読み上げます。';
+    ui.answerTiming.disabled = !inTest;
+    ui.answerInfo.textContent = !inTest
+      ? '学習モードでは各問題の最初に日本語訳を読み上げます。'
+      : ui.answerTiming.value === 'each'
+        ? '各問題の英語が終わるたびに日本語訳を読み上げます。'
+        : ui.answerTiming.value === 'none'
+          ? '英語だけを聞いて終了します。'
+          : '全問の英語が終わった後、日本語訳を問題順に読み上げます。';
   }
 
   function refreshVoices() {
@@ -433,10 +451,10 @@
     ui.previewJapanese.disabled = value && previewKind !== 'ja';
     ui.previewVoice.textContent = value && previewKind === 'en' ? '■ 試聴を停止' : '▶ この声を試聴（標準速度）';
     ui.previewJapanese.textContent = value && previewKind === 'ja' ? '■ 試聴を停止' : '▶ 日本語の声を試聴';
-    for (const element of [ui.materials, ui.mode, ui.rate, ui.repeats, ui.gap, ui.voice, ui.japaneseVoice, ui.reloadVoices, ui.reloadJapaneseVoices, ui.hideText]) {
+    for (const element of [ui.materials, ui.mode, ui.answerTiming, ui.rate, ui.repeats, ui.gap, ui.voice, ui.japaneseVoice, ui.reloadVoices, ui.reloadJapaneseVoices, ui.hideText]) {
       element.disabled = value;
     }
-    if (!value) updateValidationButtonsOnly();
+    if (!value) { updateModeInfo(); updateValidationButtonsOnly(); }
   }
 
   function updateValidationButtonsOnly() {
@@ -536,8 +554,28 @@
   }
 
   async function playback(token, items, settings) {
-    const total = items.length * settings.repeats;
+    const isTest = settings.mode === 'test';
+    const answersEach = isTest && settings.answerTiming === 'each';
+    const answersEnd = isTest && settings.answerTiming === 'end';
+    const total = items.length * settings.repeats +
+      ((answersEach || answersEnd) ? items.length : 0);
     let finished = 0;
+
+    const sayAnswer = async (index) => {
+      if (token !== runId) return false;
+      ui.position.textContent = `${index + 1} / ${items.length} 問`;
+      ui.displayText.textContent = settings.hideText
+        ? `第${index + 1}問の答えを確認しよう`
+        : items[index].japanese;
+      ui.displaySub.textContent = `日本語で答え合わせ · ${index + 1} / ${items.length} 問`;
+      const result = await speakJapanese(items[index].japanese, settings.japaneseVoice, token);
+      if (token !== runId) return false;
+      if (!result.ok) throw new Error(result.message || '日本語の答えを再生できませんでした。');
+      finished++;
+      setProgress(finished / total);
+      return true;
+    };
+
     try {
       for (let index = 0; index < items.length; index++) {
         if (token !== runId) return;
@@ -560,17 +598,39 @@
           finished++;
           setProgress(finished / total);
 
-          const hasNext = index < items.length - 1 || repeat < settings.repeats - 1;
+          const hasNext = index < items.length - 1 ||
+            repeat < settings.repeats - 1 || answersEach || answersEnd;
           if (hasNext && settings.gap > 0) {
-            const waitLabel = repeat < settings.repeats - 1 ? '考える時間' : '次の問題まで';
+            const waitLabel = repeat < settings.repeats - 1 ? '考える時間'
+              : (answersEach || (answersEnd && index === items.length - 1))
+                ? '答え合わせまで' : '次の問題まで';
             if (!(await sleep(settings.gap * 1000, token, waitLabel))) return;
           }
+        }
+
+        if (answersEach) {
+          if (!(await sayAnswer(index))) return;
+          // 答えを聞き終えた後、次の問題の英語までの間隔も確保する。
+          if (index < items.length - 1 && settings.gap > 0) {
+            if (!(await sleep(settings.gap * 1000, token, '次の問題まで'))) return;
+          }
+        }
+      }
+
+      if (answersEnd) {
+        for (let index = 0; index < items.length; index++) {
+          if (index > 0 && settings.gap > 0) {
+            if (!(await sleep(settings.gap * 1000, token, '次の答えまで'))) return;
+          }
+          if (!(await sayAnswer(index))) return;
         }
       }
       if (token !== runId) return;
       setPlaying(false);
-      ui.displayText.textContent = '学習完了！ 🎉';
-      ui.displaySub.textContent = `${items.length}問 × ${settings.repeats}回の読み上げが終了しました`;
+      ui.displayText.textContent = isTest ? 'テスト完了！ 🎉' : '学習完了！ 🎉';
+      ui.displaySub.textContent = isTest && (answersEnd || answersEach)
+        ? `${items.length}問の英語と日本語の答え合わせが終了しました`
+        : `${items.length}問 × ${settings.repeats}回の読み上げが終了しました`;
       setNotice('おつかれさま！ 再生ボタンで最初からもう一度聴けます。');
     } catch (error) {
       if (token !== runId) return;
@@ -644,7 +704,7 @@
     const settings = {
       rate: Number(ui.rate.value), repeats: Number(ui.repeats.value),
       gap: Number(ui.gap.value), hideText: ui.hideText.checked, voice: getVoice(),
-      japaneseVoice: getJapaneseVoice(), mode: ui.mode.value
+      japaneseVoice: getJapaneseVoice(), mode: ui.mode.value, answerTiming: ui.answerTiming.value
     };
     if (synth.paused) {
       try { synth.resume(); } catch (_) {}
@@ -670,6 +730,7 @@
   selectedVoice = typeof stored.voice === 'string' ? stored.voice : 'auto';
   selectedJapaneseVoice = typeof stored.japaneseVoice === 'string' ? stored.japaneseVoice : 'auto';
   ui.mode.value = stored.mode === 'study' ? 'study' : 'test';
+  ui.answerTiming.value = ['end', 'each', 'none'].includes(stored.answerTiming) ? stored.answerTiming : 'end';
   updateModeInfo();
   updateValidation();
 
@@ -678,6 +739,7 @@
     element.addEventListener('change', save);
   }
   ui.mode.addEventListener('change', () => { updateModeInfo(); save(); });
+  ui.answerTiming.addEventListener('change', () => { updateModeInfo(); save(); });
   ui.voice.addEventListener('change', () => { selectedVoice = ui.voice.value; save(); });
   ui.japaneseVoice.addEventListener('change', () => { selectedJapaneseVoice = ui.japaneseVoice.value; save(); });
   ui.reloadVoices.addEventListener('click', refreshVoices);
