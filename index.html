@@ -91,6 +91,13 @@
     .library-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
     .library-status { font-size: 12px; color: var(--sub); line-height: 1.6; margin: 11px 0 0; min-height: 20px; white-space: pre-line; }
     .library-status[data-type="error"] { color: var(--error); }
+    .format-card { padding: 16px 18px; }
+    .format-label { display:block; margin-bottom:10px; font-size:13px; color:var(--sub); font-weight:730; }
+    .format-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; background:var(--surface-alt); border-radius:15px; border:1px solid var(--line); }
+    .format-tab { min-height:48px; padding:8px 3px; border:1px solid transparent; border-radius:11px; background:transparent; color:var(--sub); font-size:14px; font-weight:750; }
+    .format-tab.active { background:var(--primary); color:var(--primary-text); }
+    .format-help { margin:10px 2px 0; font-size:12px; line-height:1.6; color:var(--sub); }
+    body.english-only #playback-mode-field, body.english-only #answer-setting-field, body.english-only #japanese-voice-field { display:none; }
     .voice-details { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--sub); font-size: 12px; }
     .voice-details summary { cursor: pointer; font-weight: 700; color: var(--text); }
     .voice-list { margin: 9px 0 0; white-space: pre-line; overflow-wrap: anywhere; max-height: 190px; overflow: auto; }
@@ -123,17 +130,26 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.6</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.7</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
+
+  <section class="card format-card" aria-label="教材の入力形式">
+    <span class="format-label">まず、教材の形式を選ぼう</span>
+    <div class="format-switch" role="group" aria-label="教材の入力形式">
+      <button type="button" id="format-english" class="format-tab" aria-pressed="false">🎧 英語のみ</button>
+      <button type="button" id="format-paired" class="format-tab active" aria-pressed="true">📖 英語＋日本語訳</button>
+    </div>
+    <p id="format-help" class="format-help">1行ごとに「英文 | 日本語訳」を入力します。</p>
+  </section>
 
   <section class="card" id="material-card" aria-labelledby="material-title">
     <div class="section-head">
       <h2 class="section-title" id="material-title">01　英文を貼り付ける</h2>
       <span class="count" id="question-count">3問</span>
     </div>
-    <label for="materials" class="caption">1行につき「英文 | 日本語訳」を1セット</label>
+    <label for="materials" class="caption" id="format-label">1行につき「英文 | 日本語訳」を1セット</label>
     <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="format-hint validation"></textarea>
     <p class="hint" id="format-hint">例：The train is late. | 電車が遅れています。<br>空行は無視します。学習モードでは日本語訳も読み上げます。</p>
     <div id="validation" class="validation good" role="status" aria-live="polite"></div>
@@ -170,7 +186,7 @@
       <span class="tiny">変更は自動保存</span>
     </div>
     <div class="settings">
-      <div class="full field">
+      <div class="full field" id="playback-mode-field">
         <label for="mode">学習モード</label>
         <select id="mode">
           <option value="test">🎧 テストモード（英語のみ）</option>
@@ -178,7 +194,7 @@
         </select>
         <small class="mode-help" id="mode-info">英語のみを設定回数読み上げます。</small>
       </div>
-      <div class="full field">
+      <div class="full field" id="answer-setting-field">
         <label for="answer-timing">テストモードの答え合わせ</label>
         <select id="answer-timing">
           <option value="end">全問終了後にまとめて日本語で発表</option>
@@ -233,7 +249,7 @@
           <p class="voice-info-note">この一覧に表示されない声は、現在のSafariでは指定できません。試聴は「The train is late. I like this music.」を標準速度で読み上げます。</p>
         </details>
       </div>
-      <div class="field">
+      <div class="field" id="japanese-voice-field">
         <label for="japanese-voice">日本語音声（学習・答え合わせ）</label>
         <div class="inline-control">
           <select id="japanese-voice"><option value="auto">自動（日本語）</option></select>
@@ -283,10 +299,12 @@
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
+    formatEnglish: $('format-english'), formatPaired: $('format-paired'),
+    formatHelp: $('format-help'), formatLabel: $('format-label'), formatHint: $('format-hint'),
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
     libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
@@ -317,6 +335,38 @@
   let library = [];
   let libraryStorageError = false;
 
+  let inputMode = 'paired';
+  const drafts = { paired: EXAMPLE, english: '' };
+
+  function updateFormatUI() {
+    const en = inputMode === 'english';
+    ui.formatEnglish.classList.toggle('active', en);
+    ui.formatPaired.classList.toggle('active', !en);
+    ui.formatEnglish.setAttribute('aria-pressed', String(en));
+    ui.formatPaired.setAttribute('aria-pressed', String(!en));
+    document.body.classList.toggle('english-only', en);
+    ui.formatHelp.textContent = en
+      ? '英文を1行ずつ入力します。日本語読み上げ・答え合わせは自動的に省略します。'
+      : '1行ごとに「英文 | 日本語訳」を入力します。';
+    ui.formatLabel.textContent = en ? '1行に英文を1つずつ入力' : '1行につき「英文 | 日本語訳」を1セット';
+    ui.formatHint.textContent = en
+      ? '例：The train is late.（改行して次の英文） 空行は無視します。'
+      : '例：The train is late. | 電車が遅れています。 空行は無視します。';
+  }
+
+  function switchInputMode(next) {
+    if (isPlaying || (next !== 'english' && next !== 'paired') || next === inputMode) return;
+    drafts[inputMode] = ui.materials.value;
+    inputMode = next;
+    ui.materials.value = drafts[next];
+    ui.libraryName.value = '';
+    ui.librarySelect.value = '';
+    updateFormatUI();
+    updateValidation();
+    save();
+    libraryMessage('入力形式を変更しました。元の形式の下書きも保存されています。');
+  }
+
   function getSaved() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -327,8 +377,9 @@
   }
 
   function save() {
+    drafts[inputMode] = ui.materials.value;
     const data = {
-      text: ui.materials.value, rate: ui.rate.value, repeats: ui.repeats.value,
+      text: ui.materials.value, inputMode, pairedDraft: drafts.paired, englishDraft: drafts.english, rate: ui.rate.value, repeats: ui.repeats.value,
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
       libraryName: ui.libraryName.value, hideText: ui.hideText.checked
@@ -346,7 +397,8 @@
       if (!Array.isArray(parsed) || !parsed.every((entry) =>
         entry && typeof entry.id === 'string' && entry.id &&
         typeof entry.title === 'string' && entry.title.trim() &&
-        typeof entry.text === 'string' && Number.isFinite(entry.updatedAt))) {
+        typeof entry.text === 'string' && Number.isFinite(entry.updatedAt) &&
+        (entry.format === undefined || entry.format === 'english' || entry.format === 'paired'))) {
         throw new Error('invalid library');
       }
       return parsed;
@@ -383,7 +435,7 @@
     for (const entry of library) {
       const option = document.createElement('option');
       option.value = entry.id;
-      option.textContent = `${entry.title}（${parseMaterials(entry.text).items.length}問）`;
+      option.textContent = `${entry.title}（${parseMaterials(entry.text, entry.format === 'english' ? 'english' : 'paired').items.length}問・${entry.format === 'english' ? '英語のみ' : '英日併記'}）`;
       ui.librarySelect.append(option);
     }
     ui.librarySelect.value = library.some(entry => entry.id === selectId) ? selectId : '';
@@ -415,7 +467,7 @@
     if (existing && !window.confirm(`「${title}」は保存済みです。内容を上書きしますか？`)) return;
     const now = Date.now();
     const entry = { id: existing ? existing.id : `${now.toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
-      title, text: ui.materials.value, updatedAt: now };
+      title, text: ui.materials.value, format: inputMode, updatedAt: now };
     const next = (existing ? library.map(item => item.id === existing.id ? entry : item) : [...library, entry])
       .sort((a, b) => b.updatedAt - a.updatedAt);
     if (!writeLibrary(next)) return;
@@ -428,9 +480,15 @@
     if (isPlaying || libraryStorageError) return;
     const entry = library.find(item => item.id === ui.librarySelect.value);
     if (!entry) { libraryMessage('呼び出す教材を選択してください。', true); return; }
-    if (ui.materials.value !== entry.text && !window.confirm('現在編集中の英文が置き換わります。教材を呼び出しますか？')) return;
+    const format = entry.format === 'english' ? 'english' : 'paired';
+    if ((ui.materials.value !== entry.text || inputMode !== format) &&
+        !window.confirm('教材を切り替えます。現在の内容は元の形式の下書きに残ります。続けますか？')) return;
+    drafts[inputMode] = ui.materials.value;
+    inputMode = format;
     ui.materials.value = entry.text;
+    drafts[inputMode] = entry.text;
     ui.libraryName.value = entry.title;
+    updateFormatUI();
     updateValidation();
     save();
     libraryMessage(`「${entry.title}」を呼び出しました。`);
@@ -446,13 +504,21 @@
     libraryMessage(`「${entry.title}」を削除しました。現在の編集画面には教材が残っています。`);
   }
 
-  function parseMaterials(raw) {
+  function parseMaterials(raw, format = inputMode) {
     const lines = raw.split(/\r?\n/);
     const items = [];
     const errors = [];
     lines.forEach((line, index) => {
       const value = line.trim();
       if (!value) return;
+      if (format === 'english') {
+        if (value.includes('|')) {
+          errors.push(`${index + 1}行目：英語のみの形式では「|」を入れず、英文だけにしてください。`);
+          return;
+        }
+        items.push({ english: value, japanese: '' });
+        return;
+      }
       const separator = value.indexOf('|');
       if (separator === -1 || separator !== value.lastIndexOf('|')) {
         errors.push(`${index + 1}行目：「英文 | 日本語訳」の形式にしてください。`);
@@ -488,7 +554,7 @@
       ui.validation.textContent = errors.slice(0, 4).join('\n') +
         (errors.length > 4 ? `\nほか ${errors.length - 4} 件のエラー` : '');
     } else if (items.length === 0) {
-      ui.validation.textContent = '英文と日本語訳を貼り付けてください。';
+      ui.validation.textContent = inputMode === 'english' ? '英文を1行ずつ貼り付けてください。' : '英文と日本語訳を貼り付けてください。';
     } else {
       ui.validation.textContent = `${items.length}問を認識しました。再生できます。`;
     }
@@ -598,6 +664,8 @@
     document.body.classList.toggle('listening-private', value && ui.hideText.checked);
     ui.start.disabled = value;
     ui.stop.disabled = !value;
+    ui.formatEnglish.disabled = value;
+    ui.formatPaired.disabled = value;
     ui.previewVoice.disabled = value && previewKind !== 'en';
     ui.previewJapanese.disabled = value && previewKind !== 'ja';
     ui.previewVoice.textContent = value && previewKind === 'en' ? '■ 試聴を停止' : '▶ この声を試聴（標準速度）';
@@ -856,7 +924,8 @@
     const settings = {
       rate: Number(ui.rate.value), repeats: Number(ui.repeats.value),
       gap: Number(ui.gap.value), hideText: ui.hideText.checked, voice: getVoice(),
-      japaneseVoice: getJapaneseVoice(), mode: ui.mode.value, answerTiming: ui.answerTiming.value
+      japaneseVoice: getJapaneseVoice(), mode: inputMode === 'english' ? 'test' : ui.mode.value,
+      answerTiming: inputMode === 'english' ? 'none' : ui.answerTiming.value
     };
     if (synth.paused) {
       try { synth.resume(); } catch (_) {}
@@ -873,7 +942,11 @@
   }
 
   const stored = getSaved();
-  ui.materials.value = typeof stored.text === 'string' ? stored.text : EXAMPLE;
+  drafts.paired = typeof stored.pairedDraft === 'string' ? stored.pairedDraft
+    : (typeof stored.text === 'string' ? stored.text : EXAMPLE);
+  drafts.english = typeof stored.englishDraft === 'string' ? stored.englishDraft : '';
+  inputMode = stored.inputMode === 'english' ? 'english' : 'paired';
+  ui.materials.value = drafts[inputMode];
   ui.libraryName.value = typeof stored.libraryName === 'string' ? stored.libraryName.slice(0, 60) : '';
   library = getLibrary();
   renderLibrary();
@@ -888,8 +961,11 @@
   ui.mode.value = stored.mode === 'study' ? 'study' : 'test';
   ui.answerTiming.value = ['end', 'each', 'none'].includes(stored.answerTiming) ? stored.answerTiming : 'end';
   updateModeInfo();
+  updateFormatUI();
   updateValidation();
 
+  ui.formatEnglish.addEventListener('click', () => switchInputMode('english'));
+  ui.formatPaired.addEventListener('click', () => switchInputMode('paired'));
   ui.materials.addEventListener('input', () => { updateValidation(); save(); });
   ui.libraryName.addEventListener('input', () => { updateLibraryButtons(); save(); });
   ui.librarySelect.addEventListener('change', updateLibraryButtons);
