@@ -135,6 +135,12 @@
     .main-btn { background: var(--primary); color: var(--primary-text); }
     .stop-btn { background: var(--surface-alt); border: 1px solid var(--line); color: var(--text); }
     button:disabled { opacity: .42; cursor: default; }
+    .repeat-box { margin-top:16px; padding:13px; border-radius:14px; background:var(--surface-alt); border:1px solid var(--line); }
+    .repeat-box label { display:block; margin-bottom:6px; font-size:13px; font-weight:720; }
+    .repeat-box select, .repeat-box input { width:100%; min-height:45px; border:1px solid var(--line); border-radius:11px; padding:8px 10px; font-size:15px; color:var(--text); background:var(--surface); }
+    .repeat-box .repeat-detail { margin-top:10px; }
+    .repeat-box .repeat-detail[hidden] { display:none; }
+    .repeat-info { margin:8px 0 0; color:var(--sub); font-size:12px; line-height:1.6; }
     .transport-grid { display:grid; grid-template-columns: 1fr 1fr; gap:9px; margin-top:10px; }
     .transport-btn { min-height:49px; padding:8px 6px; border-radius:13px; border:1px solid var(--line); background:var(--surface-alt); color:var(--text); font-weight:750; font-size:14px; }
     .transport-btn.primary { background:var(--accent); color:var(--primary); }
@@ -149,7 +155,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.0</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.0.1</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -323,6 +329,25 @@
       <p id="display-text" class="playing-big">準備完了！</p>
       <p id="display-sub" class="playing-sub">「最初から再生」を押してスタート</p>
     </div>
+    <div class="repeat-box" aria-label="リピート再生の設定">
+      <label for="repeat-mode">🔁 リピート再生</label>
+      <select id="repeat-mode">
+        <option value="off">リピートしない（通常再生）</option>
+        <option value="all">教材の最後から最初へ繰り返す</option>
+        <option value="sentence">選んだ英文1つだけを繰り返す</option>
+        <option value="segment">指定した英文の一部分を繰り返す</option>
+      </select>
+      <div class="repeat-detail" id="repeat-sentence-box" hidden>
+        <label for="repeat-sentence">繰り返す英文を選ぶ</label>
+        <select id="repeat-sentence"></select>
+      </div>
+      <div class="repeat-detail" id="repeat-segment-box" hidden>
+        <label for="repeat-segment">繰り返す部分を入力</label>
+        <input id="repeat-segment" type="text" maxlength="500" placeholder="例：My dog is" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <p class="repeat-info">英文の一部分をコピーして貼り付けよう。入力した部分だけを英語で繰り返します。</p>
+      </div>
+      <p class="repeat-info" id="repeat-info">最後まで再生すると終了します。</p>
+    </div>
     <div class="buttons">
       <button type="button" class="main-btn" id="start">▶ 最初から再生</button>
       <button type="button" class="stop-btn" id="stop" disabled>■ 停止</button>
@@ -333,7 +358,7 @@
       <button type="button" class="transport-btn" id="previous-question" disabled>◀ 前の問題</button>
       <button type="button" class="transport-btn" id="next-question" disabled>次の問題 ▶</button>
     </div>
-    <p class="transport-hint">一時停止からの再開・問題移動は、その問題の最初から読み上げます。</p>
+    <p class="transport-hint">一時停止は発話途中・繰り返し途中・待ち時間を保持します。「もう一度聞く」と前後移動だけ、問題の先頭から再生します。</p>
     <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">Safariで音声を出すため、最初は再生ボタンをタップしてください。</p>
   </section>
 
@@ -356,7 +381,7 @@
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, reviewKeys: [], hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, reviewKeys: [], repeatMode: 'off', repeatSentenceKey: '', repeatSegment: '', hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
@@ -376,6 +401,9 @@
     previewJapanese: $('preview-japanese'), reloadJapaneseVoices: $('reload-japanese-voices'),
     reloadVoices: $('reload-voices'), hideText: $('hide-text'),
     start: $('start'), stop: $('stop'), notice: $('notice'),
+    repeatMode: $('repeat-mode'), repeatSentence: $('repeat-sentence'),
+    repeatSentenceBox: $('repeat-sentence-box'), repeatSegment: $('repeat-segment'),
+    repeatSegmentBox: $('repeat-segment-box'), repeatInfo: $('repeat-info'),
     pauseResume: $('pause-resume'), replayQuestion: $('replay-question'),
     previousQuestion: $('previous-question'), nextQuestion: $('next-question'),
     position: $('position'), progress: $('progress'), progressFill: $('progress-fill'),
@@ -388,6 +416,12 @@
   let runId = 0; // 停止や移動時には番号を変更して古い処理を終了する
   let playbackSession = null; // 今の教材・設定・問題番号を維持する
   let isPaused = false;
+  let repeatMode = 'off';
+  let repeatSentenceKey = '';
+  let repeatSegment = '';
+  let pauseGate = null;
+  let activeDelay = null;
+  let speechWatchdog = null;
   let abortSpeech = null;
   let abortDelay = null;
   let currentUtterance = null; // Safariで音声オブジェクトが消えないよう保持
@@ -451,7 +485,8 @@
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
       libraryName: ui.libraryName.value, hideText: ui.hideText.checked,
-      reviewOnly, reviewKeys: [...reviewKeys]
+      reviewOnly, reviewKeys: [...reviewKeys],
+      repeatMode, repeatSentenceKey, repeatSegment
     };
   }
 
@@ -541,6 +576,57 @@
     save();
   }
 
+  function repeatTargets(items) {
+    if (repeatMode === 'sentence') {
+      const chosen = items.find(item => reviewKey(item.english) === repeatSentenceKey);
+      return chosen ? [{ english: chosen.english, japanese: '' }] : [];
+    }
+    if (repeatMode === 'segment') {
+      const snippet = repeatSegment.trim();
+      return snippet ? [{ english: snippet, japanese: '' }] : [];
+    }
+    return reviewOnly ? items.filter(item => reviewKeys.has(reviewKey(item.english))) : items;
+  }
+
+  function updateRepeatUI(items) {
+    const previous = repeatSentenceKey;
+    ui.repeatSentence.replaceChildren();
+    const seen = new Set();
+    items.forEach((item, index) => {
+      const key = reviewKey(item.english);
+      if (seen.has(key)) return;
+      seen.add(key);
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${index + 1}. ${item.english}`;
+      ui.repeatSentence.append(opt);
+    });
+    repeatSentenceKey = seen.has(previous) ? previous : (ui.repeatSentence.options[0]?.value || '');
+    ui.repeatSentence.value = repeatSentenceKey;
+    ui.repeatMode.value = repeatMode;
+    ui.repeatSentenceBox.hidden = repeatMode !== 'sentence';
+    ui.repeatSegmentBox.hidden = repeatMode !== 'segment';
+    ui.repeatSegment.value = repeatSegment;
+    ui.repeatInfo.textContent = repeatMode === 'all'
+      ? '最後まで再生すると最初に戻ります。停止ボタンを押すまで続きます。'
+      : repeatMode === 'sentence'
+        ? '選んだ英文を、設定した間隔をあけて1回ずつ繰り返します。日本語音声は入りません。'
+        : repeatMode === 'segment'
+          ? '入力した英語の部分だけを、設定した間隔をあけて繰り返します。'
+          : '最後まで再生すると終了します。';
+    ui.repeatMode.disabled = isPlaying;
+    ui.repeatSentence.disabled = isPlaying || repeatMode !== 'sentence';
+    ui.repeatSegment.disabled = isPlaying || repeatMode !== 'segment';
+  }
+
+  function setRepeatMode(mode) {
+    if (isPlaying || !['off', 'all', 'sentence', 'segment'].includes(mode)) return;
+    repeatMode = mode;
+    updateRepeatUI(parseMaterials(ui.materials.value).items);
+    updateValidationButtonsOnly();
+    save();
+  }
+
   function backupMessage(message, error = false) {
     ui.backupStatus.textContent = message;
     ui.backupStatus.dataset.type = error ? 'error' : 'normal';
@@ -619,6 +705,9 @@
         typeof a.voice !== 'string' || a.voice.length > 300 ||
         typeof a.japaneseVoice !== 'string' || a.japaneseVoice.length > 300 ||
         typeof a.hideText !== 'boolean' ||
+        (a.repeatMode !== undefined && !['off', 'all', 'sentence', 'segment'].includes(a.repeatMode)) ||
+        (a.repeatSentenceKey !== undefined && (typeof a.repeatSentenceKey !== 'string' || a.repeatSentenceKey.length > 2000)) ||
+        (a.repeatSegment !== undefined && (typeof a.repeatSegment !== 'string' || a.repeatSegment.length > 500)) ||
         (a.reviewOnly !== undefined && typeof a.reviewOnly !== 'boolean') ||
         (a.reviewKeys !== undefined && (
           !Array.isArray(a.reviewKeys) || a.reviewKeys.length > 1000 ||
@@ -636,7 +725,10 @@
       libraryName: a.libraryName, voice: a.voice, japaneseVoice: a.japaneseVoice,
       rate: String(a.rate), repeats: String(a.repeats), gap: String(a.gap),
       hideText: a.hideText, mode: a.mode, answerTiming: a.answerTiming,
-      reviewOnly: a.reviewOnly === true, reviewKeys: Array.isArray(a.reviewKeys) ? [...new Set(a.reviewKeys)] : []
+      reviewOnly: a.reviewOnly === true, reviewKeys: Array.isArray(a.reviewKeys) ? [...new Set(a.reviewKeys)] : [],
+      repeatMode: ['off', 'all', 'sentence', 'segment'].includes(a.repeatMode) ? a.repeatMode : 'off',
+      repeatSentenceKey: typeof a.repeatSentenceKey === 'string' ? a.repeatSentenceKey : '',
+      repeatSegment: typeof a.repeatSegment === 'string' ? a.repeatSegment : ''
     };
     return { settings, library: normalized };
   }
@@ -851,8 +943,7 @@
       ui.validation.textContent = `${items.length}問を認識しました。再生できます。`;
     }
     if (!isPlaying) {
-      const playCount = reviewOnly
-        ? items.filter(item => reviewKeys.has(reviewKey(item.english))).length : items.length;
+      const playCount = repeatTargets(items).length;
       ui.start.disabled = !hasSpeech || Boolean(errors.length) || playCount === 0;
       ui.position.textContent = `0 / ${playCount} 問`;
       ui.displayText.textContent = '準備完了！';
@@ -861,6 +952,8 @@
     }
     updateLibraryButtons();
     renderReviewList(items);
+    updateRepeatUI(items);
+    updateValidationButtonsOnly();
     return { items, errors };
   }
 
@@ -968,6 +1061,10 @@
     if (abortSpeech) abortSpeech();
     if (abortDelay) abortDelay();
     try { synth.cancel(); } catch (_) {}
+    if (synth.paused) { try { synth.resume(); } catch (_) {} }
+    if (pauseGate) { const wake = pauseGate; pauseGate = null; wake(); }
+    if (activeDelay) { activeDelay.abort(); activeDelay = null; }
+    if (speechWatchdog) { speechWatchdog.abort(); speechWatchdog = null; }
     return runId;
   }
 
@@ -985,17 +1082,42 @@
     void playback(token, session.items, session.settings, index);
   }
 
+  function waitWhilePaused(token) {
+    if (token !== runId) return Promise.resolve(false);
+    if (!isPaused) return Promise.resolve(true);
+    return new Promise(resolve => {
+      pauseGate = () => resolve(token === runId);
+    });
+  }
+
   function togglePause() {
     if (!playbackSession || !isPlaying || isPreviewing) return;
     if (isPaused) {
-      restartAt(playbackSession.index, '現在の問題の最初から再開しました。');
+      // cancel()を行わず、同じutteranceを発話途中から再開する。
+      try { synth.resume(); }
+      catch (_) {
+        setNotice('このSafariでは音声の再開ができませんでした。', 'error');
+        return;
+      }
+      isPaused = false;
+      if (activeDelay) activeDelay.resume();
+      if (speechWatchdog) speechWatchdog.resume();
+      if (pauseGate) { const wake = pauseGate; pauseGate = null; wake(); }
+      setNotice('一時停止した位置から再開しました。');
+      updateTransportButtons();
       return;
     }
-    interruptCurrentAudio();
+    try { synth.pause(); }
+    catch (_) {
+      setNotice('このSafariでは音声の一時停止ができませんでした。', 'error');
+      return;
+    }
+    // speechSynthesisのキューを破棄しないので、発話位置と繰り返し回数を保てる。
     isPaused = true;
-    ui.displayText.textContent = '一時停止中';
-    ui.displaySub.textContent = `第${playbackSession.index + 1}問で停止しています`;
-    setNotice('「再開」を押すと、この問題の最初から読み上げます。');
+    if (activeDelay) activeDelay.pause();
+    if (speechWatchdog) speechWatchdog.pause();
+    ui.displaySub.textContent = `一時停止中 · 第${playbackSession.index + 1}問`;
+    setNotice('停止位置を保持しています。「再開」で続きから読み上げます。');
     updateTransportButtons();
   }
 
@@ -1016,6 +1138,9 @@
     document.body.classList.toggle('listening-private', value && ui.hideText.checked);
     ui.start.disabled = value;
     ui.stop.disabled = !value;
+    ui.repeatMode.disabled = value;
+    ui.repeatSentence.disabled = value || repeatMode !== 'sentence';
+    ui.repeatSegment.disabled = value || repeatMode !== 'segment';
     ui.reviewAll.disabled = value;
     ui.reviewOnly.disabled = value;
     for (const row of reviewInputs) row.input.disabled = value;
@@ -1037,75 +1162,107 @@
 
   function updateValidationButtonsOnly() {
     const { items, errors } = parseMaterials(ui.materials.value);
-    const playCount = reviewOnly
-      ? items.filter(item => reviewKeys.has(reviewKey(item.english))).length : items.length;
+    const playCount = repeatTargets(items).length;
     ui.start.disabled = !hasSpeech || playCount === 0 || errors.length > 0;
   }
 
   function sleep(ms, token, text) {
     if (ms <= 0) return Promise.resolve(token === runId);
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       if (token !== runId) { resolve(false); return; }
-      let finished = false;
-      let clockId;
-      let timerId;
-      const startedAt = Date.now();
-      const finish = (ok) => {
-        if (finished) return;
-        finished = true;
+      let remaining = ms;
+      let started = Date.now();
+      let timerId = null, clockId = null, settled = false;
+      const clearTimers = () => {
         clearTimeout(timerId);
         clearInterval(clockId);
+        timerId = null; clockId = null;
+      };
+      const finish = (ok) => {
+        if (settled) return;
+        settled = true;
+        clearTimers();
         if (abortDelay === abort) abortDelay = null;
+        if (activeDelay === controller) activeDelay = null;
         resolve(ok);
       };
-      const abort = () => finish(false);
-      abortDelay = abort;
-      const renderCountdown = () => {
-        if (token !== runId) return;
-        const remaining = Math.max(1, Math.ceil((ms - (Date.now() - startedAt)) / 1000));
-        ui.displaySub.textContent = `${text}：あと ${remaining} 秒`;
+      const render = () => {
+        if (token !== runId || isPaused) return;
+        const left = Math.max(1, Math.ceil((remaining - (Date.now() - started)) / 1000));
+        ui.displaySub.textContent = `${text}：あと ${left} 秒`;
       };
-      renderCountdown();
-      clockId = setInterval(renderCountdown, 500);
-      timerId = setTimeout(() => finish(token === runId), ms);
+      const schedule = () => {
+        if (settled || token !== runId || isPaused) return;
+        started = Date.now();
+        render();
+        clockId = setInterval(render, 500);
+        timerId = setTimeout(() => finish(token === runId), remaining);
+      };
+      const abort = () => finish(false);
+      const controller = {
+        pause() {
+          if (settled || timerId === null) return;
+          remaining = Math.max(0, remaining - (Date.now() - started));
+          clearTimers();
+        },
+        resume() {
+          if (settled) return;
+          schedule();
+        },
+        abort
+      };
+      abortDelay = abort;
+      activeDelay = controller;
+      schedule();
     });
   }
 
   function speakText(text, language, rate, voice, token) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       if (token !== runId) { resolve({ ok: false, message: 'stopped' }); return; }
       let finished = false;
-      let watchdogId;
+      let remaining = Math.max(18000, Math.min(240000, text.length * 500 / rate + 12000));
+      let watchdogId = null, started = 0;
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language;
       utterance.rate = rate;
       utterance.volume = 1;
       if (voice) { utterance.voice = voice; utterance.lang = voice.lang; }
       currentUtterance = utterance;
-
+      const clearWatchdog = () => { clearTimeout(watchdogId); watchdogId = null; };
       const finish = (ok, message = '') => {
         if (finished) return;
         finished = true;
-        clearTimeout(watchdogId);
+        clearWatchdog();
         utterance.onend = null;
         utterance.onerror = null;
         if (abortSpeech === abort) abortSpeech = null;
+        if (speechWatchdog === watchdog) speechWatchdog = null;
         if (currentUtterance === utterance) currentUtterance = null;
         resolve({ ok, message });
       };
       const abort = () => finish(false, 'stopped');
+      const watchdog = {
+        pause() {
+          if (finished || watchdogId === null) return;
+          remaining = Math.max(0, remaining - (Date.now() - started));
+          clearWatchdog();
+        },
+        resume() {
+          if (finished || token !== runId || isPaused) return;
+          started = Date.now();
+          watchdogId = setTimeout(() => {
+            finish(false, '音声の終了通知を受け取れませんでした。もう一度再生してください。');
+            try { synth.cancel(); } catch (_) {}
+          }, remaining);
+        },
+        abort
+      };
       abortSpeech = abort;
+      speechWatchdog = watchdog;
       utterance.onend = () => finish(true);
-      utterance.onerror = (event) => finish(false, `音声エラー：${event.error || 'unknown'}`);
-
-      // Safariで終了通知が届かない場合、無限に待ち続けずエラーを表示する。
-      // 長文・ゆっくり読み上げにもある程度余裕を持たせる。
-      const watchdogMs = Math.max(18000, Math.min(240000, text.length * 500 / rate + 12000));
-      watchdogId = setTimeout(() => {
-        finish(false, '音声の終了通知を受け取れませんでした。再生ボタンからやり直してください。');
-        try { synth.cancel(); } catch (_) {}
-      }, watchdogMs);
-
+      utterance.onerror = event => finish(false, `音声エラー：${event.error || 'unknown'}`);
+      watchdog.resume();
       try { synth.speak(utterance); }
       catch (error) { finish(false, `読み上げを開始できません：${error.message || error}`); }
     });
@@ -1136,9 +1293,9 @@
     const isTest = settings.mode === 'test';
     const answersEach = isTest && settings.answerTiming === 'each';
     const answersEnd = isTest && settings.answerTiming === 'end';
-    const remaining = items.length - startIndex;
-    const total = remaining * settings.repeats +
-      ((answersEach || answersEnd) ? remaining : 0);
+    let cycleStart = startIndex;
+    let total = (items.length - cycleStart) * settings.repeats +
+      ((answersEach || answersEnd) ? items.length - cycleStart : 0);
     let finished = 0;
 
     const sayAnswer = async (index) => {
@@ -1150,6 +1307,7 @@
         ? `第${index + 1}問の答えを確認しよう`
         : items[index].japanese;
       ui.displaySub.textContent = `日本語で答え合わせ · ${index + 1} / ${items.length} 問`;
+      if (isPaused && !(await waitWhilePaused(token))) return false;
       const result = await speakJapanese(`第${index + 1}問。${items[index].japanese}`, settings.japaneseVoice, token);
       if (token !== runId) return false;
       if (!result.ok) throw new Error(result.message || '日本語の答えを再生できませんでした。');
@@ -1159,7 +1317,8 @@
     };
 
     try {
-      for (let index = startIndex; index < items.length; index++) {
+      while (token === runId) {
+      for (let index = cycleStart; index < items.length; index++) {
         if (token !== runId) return;
         if (playbackSession) playbackSession.index = index;
         updateTransportButtons();
@@ -1167,6 +1326,7 @@
         if (settings.mode === 'study') {
           ui.displayText.textContent = settings.hideText ? 'まず、日本語の意味を聞こう' : items[index].japanese;
           ui.displaySub.textContent = '日本語訳を読み上げ中';
+          if (isPaused && !(await waitWhilePaused(token))) return;
           const jaResult = await speakJapanese(items[index].japanese, settings.japaneseVoice, token);
           if (token !== runId) return;
           if (!jaResult.ok) throw new Error(jaResult.message || '日本語音声を再生できませんでした。');
@@ -1176,6 +1336,7 @@
           ui.position.textContent = `${index + 1} / ${items.length} 問`;
           ui.displayText.textContent = settings.hideText ? '耳で聞いて、意味を考えよう' : items[index].english;
           ui.displaySub.textContent = `英語を読み上げ中 · ${repeat + 1} / ${settings.repeats} 回目`;
+          if (isPaused && !(await waitWhilePaused(token))) return;
           const result = await speakEnglish(items[index].english, settings.rate, settings.voice, token);
           if (token !== runId) return;
           if (!result.ok) throw new Error(result.message || '音声を再生できませんでした。');
@@ -1202,12 +1363,23 @@
       }
 
       if (answersEnd) {
-        for (let index = startIndex; index < items.length; index++) {
+        for (let index = cycleStart; index < items.length; index++) {
           if (index > 0 && settings.gap > 0) {
             if (!(await sleep(settings.gap * 1000, token, '次の答えまで'))) return;
           }
           if (!(await sayAnswer(index))) return;
         }
+      }
+      if (token !== runId) return;
+      if (!settings.loop) break;
+      if (settings.gap > 0 && !(await sleep(settings.gap * 1000, token, 'リピートまで'))) return;
+      if (isPaused && !(await waitWhilePaused(token))) return;
+      cycleStart = 0;
+      finished = 0;
+      total = items.length * settings.repeats + ((answersEach || answersEnd) ? items.length : 0);
+      if (playbackSession) playbackSession.index = 0;
+      ui.position.textContent = `1 / ${items.length} 問`;
+      setProgress(0);
       }
       if (token !== runId) return;
       playbackSession = null;
@@ -1288,7 +1460,7 @@
     const { items, errors } = updateValidation();
     if (!hasSpeech) { setNotice('このブラウザは音声読み上げに対応していません。Safariで開いてください。', 'error'); return; }
     if (errors.length || items.length === 0) { setNotice('教材の入力エラーを先に修正してください。', 'error'); return; }
-    const playItems = reviewOnly ? items.filter(item => reviewKeys.has(reviewKey(item.english))) : items;
+    const playItems = repeatTargets(items);
     if (!playItems.length) {
       setNotice('復習する英文にチェックを付けてください。', 'error'); return;
     }
@@ -1299,8 +1471,14 @@
       rate: Number(ui.rate.value), repeats: Number(ui.repeats.value),
       gap: Number(ui.gap.value), hideText: ui.hideText.checked, voice: getVoice(),
       japaneseVoice: getJapaneseVoice(), mode: inputMode === 'english' ? 'test' : ui.mode.value,
-      answerTiming: inputMode === 'english' ? 'none' : ui.answerTiming.value
+      answerTiming: inputMode === 'english' ? 'none' : ui.answerTiming.value,
+      loop: repeatMode !== 'off'
     };
+    if (repeatMode === 'sentence' || repeatMode === 'segment') {
+      settings.mode = 'test';
+      settings.answerTiming = 'none';
+      settings.repeats = 1;
+    }
     if (synth.paused) {
       try { synth.resume(); } catch (_) {}
     }
@@ -1318,6 +1496,9 @@
   }
 
   const stored = getSaved();
+  repeatMode = ['off', 'all', 'sentence', 'segment'].includes(stored.repeatMode) ? stored.repeatMode : 'off';
+  repeatSentenceKey = typeof stored.repeatSentenceKey === 'string' ? stored.repeatSentenceKey : '';
+  repeatSegment = typeof stored.repeatSegment === 'string' ? stored.repeatSegment : '';
   reviewOnly = stored.reviewOnly === true;
   reviewKeys = new Set(Array.isArray(stored.reviewKeys)
     ? stored.reviewKeys.filter(value => typeof value === 'string' && value.length > 0 && value.length <= 2000).slice(0, 1000)
@@ -1344,6 +1525,19 @@
   updateFormatUI();
   updateValidation();
 
+  ui.repeatMode.addEventListener('change', () => setRepeatMode(ui.repeatMode.value));
+  ui.repeatSentence.addEventListener('change', () => {
+    if (isPlaying) return;
+    repeatSentenceKey = ui.repeatSentence.value;
+    updateValidationButtonsOnly();
+    save();
+  });
+  ui.repeatSegment.addEventListener('input', () => {
+    if (isPlaying) return;
+    repeatSegment = ui.repeatSegment.value;
+    updateValidationButtonsOnly();
+    save();
+  });
   ui.reviewAll.addEventListener('click', () => toggleReviewMode(false));
   ui.reviewOnly.addEventListener('click', () => toggleReviewMode(true));
   ui.backupExport.addEventListener('click', exportBackup);
