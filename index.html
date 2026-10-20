@@ -91,6 +91,10 @@
     .library-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
     .library-status { font-size: 12px; color: var(--sub); line-height: 1.6; margin: 11px 0 0; min-height: 20px; white-space: pre-line; }
     .library-status[data-type="error"] { color: var(--error); }
+    .backup-status { min-height: 18px; margin: 10px 0 0; color: var(--sub); font-size: 12px; line-height: 1.7; white-space: pre-line; }
+    .backup-status[data-type="error"] { color: var(--error); }
+    .backup-hint { margin: 9px 0 0; color: var(--sub); font-size: 12px; line-height: 1.6; }
+    .backup-file { display: none; }
     .format-card { padding: 16px 18px; }
     .format-label { display:block; margin-bottom:10px; font-size:13px; color:var(--sub); font-weight:730; }
     .format-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; background:var(--surface-alt); border-radius:15px; border:1px solid var(--line); }
@@ -130,7 +134,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.7</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.8</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -180,9 +184,24 @@
     <p class="hint">同じタイトルで保存すると、確認後に上書きします。保存はこのiPhoneのブラウザ内だけです。</p>
   </section>
 
+  <section class="card" id="backup-card" aria-labelledby="backup-title">
+    <div class="section-head">
+      <h2 class="section-title" id="backup-title">03　バックアップ・復元</h2>
+      <span class="tiny">機種変更に備える</span>
+    </div>
+    <p class="backup-hint">保存済み教材・入力途中の英文・読み上げ設定をひとまとめにします。</p>
+    <div class="library-row">
+      <button type="button" class="library-btn library-primary" id="backup-export">⬇ バックアップ保存</button>
+      <button type="button" class="library-btn" id="backup-import">⬆ ファイルから復元</button>
+    </div>
+    <input type="file" id="backup-file" class="backup-file" accept=".json,application/json" aria-label="バックアップファイルを選択">
+    <p id="backup-status" class="backup-status" role="status" aria-live="polite">書き出したファイルはiPhoneの「ファイル」など、安全な場所に保存してください。</p>
+    <p class="backup-hint">復元時には今のデータを置き換えます。実行前に確認画面を表示します。</p>
+  </section>
+
   <section class="card" aria-labelledby="settings-title">
     <div class="section-head">
-      <h2 class="section-title" id="settings-title">03　読み上げ設定</h2>
+      <h2 class="section-title" id="settings-title">04　読み上げ設定</h2>
       <span class="tiny">変更は自動保存</span>
     </div>
     <div class="settings">
@@ -266,7 +285,7 @@
 
   <section class="player" aria-labelledby="player-title">
     <div class="player-top">
-      <span id="player-title" class="player-title">04　リスニングプレイヤー</span>
+      <span id="player-title" class="player-title">05　リスニングプレイヤー</span>
       <span id="position" class="question-no">0 / 3 問</span>
     </div>
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress" ><div class="progress-fill" id="progress-fill"></div></div>
@@ -283,7 +302,7 @@
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
-    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習モード・バックアップ機能は今後実装予定です。<br>
+    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習モードは今後実装予定です。バックアップを定期的に保存してください。<br>
     ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
@@ -294,6 +313,7 @@
   // 前版と同じキーを使用して、保存した教材と設定を引き継ぐ。
   const STORAGE_KEY = 'my-english-coach-prototype-v01';
   const LIBRARY_KEY = 'my-english-coach-library-v01';
+  const BACKUP_SIGNATURE = 'my-english-coach-backup';
   const EXAMPLE = [
     'The train is late. | 電車が遅れています。',
     'I like this music. | 私はこの音楽が好きです。',
@@ -308,6 +328,8 @@
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
     libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
+    backupExport: $('backup-export'), backupImport: $('backup-import'),
+    backupFile: $('backup-file'), backupStatus: $('backup-status'),
     mode: $('mode'), modeInfo: $('mode-info'), answerTiming: $('answer-timing'), answerInfo: $('answer-info'),
     rate: $('rate'), repeats: $('repeats'), gap: $('gap'), voice: $('voice'),
     voiceInfo: $('voice-info'), voiceList: $('voice-list'), previewVoice: $('preview-voice'),
@@ -376,16 +398,154 @@
     }
   }
 
-  function save() {
+  function captureCurrentSettings() {
     drafts[inputMode] = ui.materials.value;
-    const data = {
+    return {
       text: ui.materials.value, inputMode, pairedDraft: drafts.paired, englishDraft: drafts.english, rate: ui.rate.value, repeats: ui.repeats.value,
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
       libraryName: ui.libraryName.value, hideText: ui.hideText.checked
     };
+  }
+
+  function save() {
+    const data = captureCurrentSettings();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
     catch (_) { /* プライベートモードや空き容量不足時も再生は利用可能 */ }
+  }
+
+  function backupMessage(message, error = false) {
+    ui.backupStatus.textContent = message;
+    ui.backupStatus.dataset.type = error ? 'error' : 'normal';
+  }
+
+  function exportBackup() {
+    if (isPlaying) return;
+    if (libraryStorageError) {
+      backupMessage('保存済み教材の読み取りに問題があるため、データ保護のため書き出しを停止しました。', true);
+      return;
+    }
+    try {
+      const payload = {
+        format: BACKUP_SIGNATURE,
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        settings: captureCurrentSettings(),
+        library: library
+      };
+      const content = JSON.stringify(payload, null, 2);
+      const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date();
+      const stamp = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')].join('-');
+      link.href = url;
+      link.download = `my-english-coach-backup-${stamp}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      // Safariにダウンロード開始の猶予を与えてURLを解放する。
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      backupMessage(`バックアップを作成しました（保存済み教材 ${library.length}件）。「ファイル」アプリのダウンロード先を確認してください。`);
+    } catch (_) {
+      backupMessage('書き出しに失敗しました。Safariから開き直して再試行してください。', true);
+    }
+  }
+
+  function validateBackup(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        raw.format !== BACKUP_SIGNATURE || raw.version !== 1) {
+      throw new Error('My English Coachのバックアップファイルではありません。');
+    }
+    if (!Array.isArray(raw.library) || raw.library.length > 500) {
+      throw new Error('保存済み教材の形式または件数が正しくありません。');
+    }
+    const ids = new Set();
+    const titles = new Set();
+    const normalized = raw.library.map((entry) => {
+      if (!entry || typeof entry !== 'object' ||
+          typeof entry.id !== 'string' || entry.id.length < 1 || entry.id.length > 150 ||
+          typeof entry.title !== 'string' || !entry.title.trim() || entry.title.length > 60 ||
+          typeof entry.text !== 'string' || entry.text.length > 200000 ||
+          !Number.isFinite(entry.updatedAt) ||
+          !['english', 'paired', undefined].includes(entry.format) ||
+          ids.has(entry.id) || titles.has(entry.title)) {
+        throw new Error('バックアップに正しくない教材が含まれています。');
+      }
+      const format = entry.format === 'english' ? 'english' : 'paired';
+      const check = parseMaterials(entry.text, format);
+      if (!check.items.length || check.errors.length) throw new Error(`「${entry.title}」の教材形式に問題があります。`);
+      ids.add(entry.id);
+      titles.add(entry.title);
+      return { id: entry.id, title: entry.title, text: entry.text,
+        format, updatedAt: entry.updatedAt };
+    });
+    const a = raw.settings;
+    if (!a || typeof a !== 'object' || Array.isArray(a)) {
+      throw new Error('バックアップの設定情報が正しくありません。');
+    }
+    const mode = a.inputMode === 'english' ? 'english' : (a.inputMode === 'paired' ? 'paired' : null);
+    if (!mode || typeof a.pairedDraft !== 'string' || typeof a.englishDraft !== 'string' ||
+        a.pairedDraft.length > 200000 || a.englishDraft.length > 200000 ||
+        typeof a.libraryName !== 'string' || a.libraryName.length > 60 ||
+        typeof a.voice !== 'string' || a.voice.length > 300 ||
+        typeof a.japaneseVoice !== 'string' || a.japaneseVoice.length > 300 ||
+        typeof a.hideText !== 'boolean' ||
+        !['study', 'test'].includes(a.mode) ||
+        !['end', 'each', 'none'].includes(a.answerTiming) ||
+        ![...ui.rate.options].some(x => x.value === String(a.rate)) ||
+        ![...ui.repeats.options].some(x => x.value === String(a.repeats)) ||
+        ![...ui.gap.options].some(x => x.value === String(a.gap))) {
+      throw new Error('バックアップの設定値が正しくありません。');
+    }
+    const settings = {
+      ...DEFAULTS, inputMode: mode, pairedDraft: a.pairedDraft, englishDraft: a.englishDraft,
+      text: mode === 'english' ? a.englishDraft : a.pairedDraft,
+      libraryName: a.libraryName, voice: a.voice, japaneseVoice: a.japaneseVoice,
+      rate: String(a.rate), repeats: String(a.repeats), gap: String(a.gap),
+      hideText: a.hideText, mode: a.mode, answerTiming: a.answerTiming
+    };
+    return { settings, library: normalized };
+  }
+
+  async function importBackup(event) {
+    const file = ui.backupFile.files && ui.backupFile.files[0];
+    // 同じファイルも続けて選べるよう、選択値をリセットする。
+    if (!file) return;
+    ui.backupFile.value = '';
+    if (isPlaying) return;
+    if (file.size > 5 * 1024 * 1024) {
+      backupMessage('5MB以下のバックアップファイルを選択してください。', true); return;
+    }
+    try {
+      const content = await file.text();
+      const backup = validateBackup(JSON.parse(content));
+      const proceed = window.confirm(
+        `バックアップを復元しますか？\n\nファイル内の教材：${backup.library.length}件\n現在の教材：${library.length}件\n\n今の保存データ・下書き・設定はバックアップの内容に置き換わります。現在のデータを残すなら、先にバックアップ保存をしてください。`
+      );
+      if (!proceed) {
+        backupMessage('復元をキャンセルしました。現在のデータはそのままです。'); return;
+      }
+      const previousLibrary = localStorage.getItem(LIBRARY_KEY);
+      const previousSettings = localStorage.getItem(STORAGE_KEY);
+      try {
+        localStorage.setItem(LIBRARY_KEY, JSON.stringify(backup.library));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.settings));
+      } catch (writeError) {
+        try {
+          if (previousLibrary === null) localStorage.removeItem(LIBRARY_KEY);
+          else localStorage.setItem(LIBRARY_KEY, previousLibrary);
+          if (previousSettings === null) localStorage.removeItem(STORAGE_KEY);
+          else localStorage.setItem(STORAGE_KEY, previousSettings);
+        } catch (_) {}
+        throw new Error('保存容量などの問題で復元できませんでした。現在のデータの状態を確認してください。');
+      }
+      backupMessage('復元が完了しました。画面を再読み込みします。');
+      window.location.reload();
+    } catch (error) {
+      backupMessage(`読み込み失敗：${error instanceof SyntaxError ? 'JSONファイルが正しくありません。' : error.message || '不明なエラーです。'}`, true);
+    }
   }
 
   // 保存済み教材と編集中の教材は分離。読み込むまで編集内容を上書きしない。
@@ -664,6 +824,8 @@
     document.body.classList.toggle('listening-private', value && ui.hideText.checked);
     ui.start.disabled = value;
     ui.stop.disabled = !value;
+    ui.backupExport.disabled = value;
+    ui.backupImport.disabled = value;
     ui.formatEnglish.disabled = value;
     ui.formatPaired.disabled = value;
     ui.previewVoice.disabled = value && previewKind !== 'en';
@@ -964,6 +1126,11 @@
   updateFormatUI();
   updateValidation();
 
+  ui.backupExport.addEventListener('click', exportBackup);
+  ui.backupImport.addEventListener('click', () => {
+    if (!isPlaying) ui.backupFile.click();
+  });
+  ui.backupFile.addEventListener('change', importBackup);
   ui.formatEnglish.addEventListener('click', () => switchInputMode('english'));
   ui.formatPaired.addEventListener('click', () => switchInputMode('paired'));
   ui.materials.addEventListener('input', () => { updateValidation(); save(); });
