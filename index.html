@@ -135,6 +135,10 @@
     .main-btn { background: var(--primary); color: var(--primary-text); }
     .stop-btn { background: var(--surface-alt); border: 1px solid var(--line); color: var(--text); }
     button:disabled { opacity: .42; cursor: default; }
+    .transport-grid { display:grid; grid-template-columns: 1fr 1fr; gap:9px; margin-top:10px; }
+    .transport-btn { min-height:49px; padding:8px 6px; border-radius:13px; border:1px solid var(--line); background:var(--surface-alt); color:var(--text); font-weight:750; font-size:14px; }
+    .transport-btn.primary { background:var(--accent); color:var(--primary); }
+    .transport-hint { color:var(--sub); margin:9px 0 0; font-size:12px; line-height:1.6; }
     .notice { margin: 13px 3px 0; color: var(--sub); font-size: 12px; }
     .notice[data-type="error"] { color: var(--error); }
     .footer { text-align: center; margin-top: 17px; color: var(--sub); font-size: 12px; line-height: 1.7; }
@@ -145,7 +149,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.9</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.0</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -323,6 +327,13 @@
       <button type="button" class="main-btn" id="start">▶ 最初から再生</button>
       <button type="button" class="stop-btn" id="stop" disabled>■ 停止</button>
     </div>
+    <div class="transport-grid" aria-label="再生操作">
+      <button type="button" class="transport-btn primary" id="pause-resume" disabled>⏸ 一時停止</button>
+      <button type="button" class="transport-btn" id="replay-question" disabled>↻ もう一度聞く</button>
+      <button type="button" class="transport-btn" id="previous-question" disabled>◀ 前の問題</button>
+      <button type="button" class="transport-btn" id="next-question" disabled>次の問題 ▶</button>
+    </div>
+    <p class="transport-hint">一時停止からの再開・問題移動は、その問題の最初から読み上げます。</p>
     <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">Safariで音声を出すため、最初は再生ボタンをタップしてください。</p>
   </section>
 
@@ -365,6 +376,8 @@
     previewJapanese: $('preview-japanese'), reloadJapaneseVoices: $('reload-japanese-voices'),
     reloadVoices: $('reload-voices'), hideText: $('hide-text'),
     start: $('start'), stop: $('stop'), notice: $('notice'),
+    pauseResume: $('pause-resume'), replayQuestion: $('replay-question'),
+    previousQuestion: $('previous-question'), nextQuestion: $('next-question'),
     position: $('position'), progress: $('progress'), progressFill: $('progress-fill'),
     displayText: $('display-text'), displaySub: $('display-sub')
   };
@@ -372,7 +385,9 @@
   const synth = hasSpeech ? window.speechSynthesis : null;
 
   let isPlaying = false;
-  let runId = 0; // 停止するたびに番号を変更し、古い処理が続かないようにする
+  let runId = 0; // 停止や移動時には番号を変更して古い処理を終了する
+  let playbackSession = null; // 今の教材・設定・問題番号を維持する
+  let isPaused = false;
   let abortSpeech = null;
   let abortDelay = null;
   let currentUtterance = null; // Safariで音声オブジェクトが消えないよう保持
@@ -939,6 +954,63 @@
     return japaneseVoices.find((voice) => voiceId(voice) === selectedJapaneseVoice) || null;
   }
 
+  function updateTransportButtons() {
+    const hasSession = isPlaying && playbackSession !== null && !isPreviewing;
+    ui.pauseResume.disabled = !hasSession;
+    ui.replayQuestion.disabled = !hasSession;
+    ui.previousQuestion.disabled = !hasSession || playbackSession.index <= 0;
+    ui.nextQuestion.disabled = !hasSession || playbackSession.index >= playbackSession.items.length - 1;
+    ui.pauseResume.textContent = isPaused ? '▶ 再開' : '⏸ 一時停止';
+  }
+
+  function interruptCurrentAudio() {
+    ++runId;
+    if (abortSpeech) abortSpeech();
+    if (abortDelay) abortDelay();
+    try { synth.cancel(); } catch (_) {}
+    return runId;
+  }
+
+  function restartAt(index, label) {
+    const session = playbackSession;
+    if (!session || isPreviewing || index < 0 || index >= session.items.length) return;
+    const token = interruptCurrentAudio();
+    session.index = index;
+    isPaused = false;
+    setPlaying(true);
+    ui.position.textContent = `${index + 1} / ${session.items.length} 問`;
+    setProgress(0);
+    setNotice(label);
+    // タップから同期的に次の音声の読み上げを開始する。
+    void playback(token, session.items, session.settings, index);
+  }
+
+  function togglePause() {
+    if (!playbackSession || !isPlaying || isPreviewing) return;
+    if (isPaused) {
+      restartAt(playbackSession.index, '現在の問題の最初から再開しました。');
+      return;
+    }
+    interruptCurrentAudio();
+    isPaused = true;
+    ui.displayText.textContent = '一時停止中';
+    ui.displaySub.textContent = `第${playbackSession.index + 1}問で停止しています`;
+    setNotice('「再開」を押すと、この問題の最初から読み上げます。');
+    updateTransportButtons();
+  }
+
+  function moveQuestion(offset) {
+    if (!playbackSession || !isPlaying || isPreviewing) return;
+    const index = playbackSession.index + offset;
+    if (index < 0 || index >= playbackSession.items.length) return;
+    restartAt(index, `第${index + 1}問へ移動しました。`);
+  }
+
+  function replayQuestion() {
+    if (!playbackSession || !isPlaying || isPreviewing) return;
+    restartAt(playbackSession.index, `第${playbackSession.index + 1}問をもう一度読み上げます。`);
+  }
+
   function setPlaying(value) {
     isPlaying = value;
     document.body.classList.toggle('listening-private', value && ui.hideText.checked);
@@ -960,6 +1032,7 @@
     }
     if (!value) { updateModeInfo(); updateValidationButtonsOnly(); }
     updateLibraryButtons();
+    updateTransportButtons();
   }
 
   function updateValidationButtonsOnly() {
@@ -1048,28 +1121,30 @@
 
   function stopPlayback(reason = '停止しました。もう一度押すと先頭から再生します。') {
     if (!isPlaying) return;
-    ++runId;
-    if (abortSpeech) abortSpeech();
-    if (abortDelay) abortDelay();
-    try { synth.cancel(); } catch (_) {}
+    interruptCurrentAudio();
     isPreviewing = false;
     previewKind = null;
+    playbackSession = null;
+    isPaused = false;
     setPlaying(false);
     ui.displayText.textContent = '停止しました';
     ui.displaySub.textContent = '再生ボタンで最初の問題からやり直せます';
     setNotice(reason);
   }
 
-  async function playback(token, items, settings) {
+  async function playback(token, items, settings, startIndex = 0) {
     const isTest = settings.mode === 'test';
     const answersEach = isTest && settings.answerTiming === 'each';
     const answersEnd = isTest && settings.answerTiming === 'end';
-    const total = items.length * settings.repeats +
-      ((answersEach || answersEnd) ? items.length : 0);
+    const remaining = items.length - startIndex;
+    const total = remaining * settings.repeats +
+      ((answersEach || answersEnd) ? remaining : 0);
     let finished = 0;
 
     const sayAnswer = async (index) => {
       if (token !== runId) return false;
+      if (playbackSession) playbackSession.index = index;
+      updateTransportButtons();
       ui.position.textContent = `${index + 1} / ${items.length} 問`;
       ui.displayText.textContent = settings.hideText
         ? `第${index + 1}問の答えを確認しよう`
@@ -1084,8 +1159,10 @@
     };
 
     try {
-      for (let index = 0; index < items.length; index++) {
+      for (let index = startIndex; index < items.length; index++) {
         if (token !== runId) return;
+        if (playbackSession) playbackSession.index = index;
+        updateTransportButtons();
         ui.position.textContent = `${index + 1} / ${items.length} 問`;
         if (settings.mode === 'study') {
           ui.displayText.textContent = settings.hideText ? 'まず、日本語の意味を聞こう' : items[index].japanese;
@@ -1125,7 +1202,7 @@
       }
 
       if (answersEnd) {
-        for (let index = 0; index < items.length; index++) {
+        for (let index = startIndex; index < items.length; index++) {
           if (index > 0 && settings.gap > 0) {
             if (!(await sleep(settings.gap * 1000, token, '次の答えまで'))) return;
           }
@@ -1133,6 +1210,8 @@
         }
       }
       if (token !== runId) return;
+      playbackSession = null;
+      isPaused = false;
       setPlaying(false);
       ui.displayText.textContent = isTest ? 'テスト完了！ 🎉' : '学習完了！ 🎉';
       ui.displaySub.textContent = isTest && (answersEnd || answersEach)
@@ -1145,6 +1224,8 @@
       if (abortSpeech) abortSpeech();
       if (abortDelay) abortDelay();
       try { synth.cancel(); } catch (_) {}
+      playbackSession = null;
+      isPaused = false;
       setPlaying(false);
       ui.displayText.textContent = '再生を中断しました';
       ui.displaySub.textContent = '音声設定を確認し、再生し直してください';
@@ -1166,6 +1247,8 @@
     const token = ++runId;
     isPreviewing = true;
     previewKind = kind;
+    playbackSession = null;
+    isPaused = false;
     setPlaying(true);
     ui.displayText.textContent = isJapanese ? '日本語音声を試聴中' : '英語音声を試聴中';
     ui.displaySub.textContent = '標準速度で試聴しています';
@@ -1226,6 +1309,8 @@
       try { synth.cancel(); } catch (_) {}
     }
     const token = ++runId;
+    playbackSession = { items: playItems, settings, index: 0 };
+    isPaused = false;
     setPlaying(true);
     setProgress(0);
     setNotice('再生中です。端末の音量とイヤホンの接続を確認してください。');
@@ -1296,6 +1381,10 @@
   ui.previewJapanese.addEventListener('click', () => startVoicePreview('ja'));
   ui.start.addEventListener('click', startPlayback);
   ui.stop.addEventListener('click', () => stopPlayback());
+  ui.pauseResume.addEventListener('click', togglePause);
+  ui.previousQuestion.addEventListener('click', () => moveQuestion(-1));
+  ui.nextQuestion.addEventListener('click', () => moveQuestion(1));
+  ui.replayQuestion.addEventListener('click', replayQuestion);
   if (synth) {
     refreshVoices();
     synth.addEventListener('voiceschanged', refreshVoices);
