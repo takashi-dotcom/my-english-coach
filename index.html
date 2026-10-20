@@ -159,6 +159,8 @@
     .playing-sub { font-size: 12px; margin-top: 5px; }
     .shuffle-row { display:flex; align-items:center; justify-content:flex-end; margin:8px 0 -2px; }
     .shuffle-chip { min-height:35px; padding:5px 12px; border:1px solid var(--line); border-radius:30px; background:var(--surface-alt); color:var(--sub); font-size:12px; font-weight:760; }
+    .difficult-row { margin-top: 4px; margin-bottom: 1px; }
+    .difficult-row .shuffle-chip { max-width: 100%; }
     .shuffle-chip.active { color:var(--primary); background:var(--accent); border-color:var(--primary); }
     .shuffle-chip:disabled { opacity:.65; }
     .study-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
@@ -223,7 +225,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.2.1</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.2.2</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -235,6 +237,7 @@
     </div>
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
     <div class="shuffle-row"><button type="button" id="shuffle-toggle" class="shuffle-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム OFF</button></div>
+    <div class="shuffle-row difficult-row"><button type="button" id="difficult-toggle" class="shuffle-chip" aria-pressed="false" aria-label="まだ苦手な英文のみ再生する">🎯 苦手のみ再生 OFF（0問）</button></div>
     <div class="now-playing">
       <p id="display-text" class="playing-big">準備完了！</p>
       <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
@@ -378,29 +381,10 @@
     </details>
   </section>
 
-  <section class="card fold-card" id="review-card" aria-labelledby="review-title">
-    <details id="review-details">
-      <summary class="fold-summary">
-        <span class="fold-heading" id="review-title">04　苦手な英文を復習</span>
-        <span class="fold-meta"><span class="count" id="review-count">苦手 0 / 0問</span></span>
-      </summary>
-      <div class="fold-content">
-    <p class="review-help">復習したい英文にチェックを付けよう。チェックは自動保存されるぞ。</p>
-    <div class="review-switch" role="group" aria-label="再生する問題の選択">
-      <button type="button" class="review-tab active" id="review-all" aria-pressed="true">すべて再生</button>
-      <button type="button" class="review-tab" id="review-only" aria-pressed="false">苦手だけ再生</button>
-    </div>
-    <p class="review-help" id="review-help">すべての英文を順番に再生します。</p>
-    <div class="review-list" id="review-list" aria-label="復習チェック一覧"></div>
-    <p class="review-help">同じ英文は、別の教材で登場しても苦手チェックが引き継がれます。</p>
-      </div>
-    </details>
-  </section>
-
   <section class="card fold-card" id="progress-card" aria-labelledby="progress-title">
     <details id="progress-details">
       <summary class="fold-summary">
-        <span class="fold-heading" id="progress-title">05　学習記録・習熟度</span>
+        <span class="fold-heading" id="progress-title">04　学習記録・習熟度</span>
         <span class="fold-meta" id="progress-brief">今日 0回 · 理解 0文</span>
       </summary>
       <div class="fold-content">
@@ -422,7 +406,7 @@
   <section class="card fold-card" id="library-card" aria-labelledby="library-title">
     <details id="library-details">
       <summary class="fold-summary">
-        <span class="fold-heading" id="library-title">06　教材ライブラリ</span>
+        <span class="fold-heading" id="library-title">05　教材ライブラリ</span>
         <span class="fold-meta"><span class="count" id="library-count">保存済み 0件</span></span>
       </summary>
       <div class="fold-content">
@@ -451,7 +435,7 @@
   <section class="card fold-card" id="backup-card" aria-labelledby="backup-title">
     <details id="backup-details">
       <summary class="fold-summary">
-        <span class="fold-heading" id="backup-title">07　バックアップ・復元</span>
+        <span class="fold-heading" id="backup-title">06　バックアップ・復元</span>
         <span class="fold-meta">保存・復元</span>
       </summary>
       <div class="fold-content">
@@ -469,7 +453,7 @@
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
-    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習チェックと学習記録もバックアップに含まれます。バックアップを定期的に保存してください。<br>
+    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。理解度と学習記録もバックアップに含まれます。バックアップを定期的に保存してください。<br>
     ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
@@ -496,8 +480,7 @@
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
     libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
-    reviewAll: $('review-all'), reviewOnly: $('review-only'), reviewList: $('review-list'),
-    reviewCount: $('review-count'), reviewHelp: $('review-help'),
+    difficultToggle: $('difficult-toggle'),
     backupExport: $('backup-export'), backupImport: $('backup-import'),
     backupFile: $('backup-file'), backupStatus: $('backup-status'),
     mode: $('mode'), modeInfo: $('mode-info'), answerTiming: $('answer-timing'), answerInfo: $('answer-info'),
@@ -551,8 +534,6 @@
   let progressData = { version: 1, totalPlays: 0, daily: {}, items: {} };
 
   let reviewOnly = false;
-  let reviewKeys = new Set();
-  let reviewInputs = [];
   let inputMode = 'paired';
   const drafts = { paired: EXAMPLE, english: '' };
 
@@ -602,7 +583,7 @@
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
       libraryName: ui.libraryName.value, hideText: ui.hideText.checked,
-      reviewOnly, reviewKeys: [...reviewKeys],
+      reviewOnly,
       repeatMode, repeatSentenceKey, repeatSegment, shuffle: shuffleEnabled
     };
   }
@@ -617,80 +598,35 @@
     return english.trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
-  function updateReviewIndicators(items) {
-    const marked = items.filter(item => reviewKeys.has(reviewKey(item.english))).length;
-    ui.reviewCount.textContent = `苦手 ${marked} / ${items.length}問`;
-    ui.reviewAll.classList.toggle('active', !reviewOnly);
-    ui.reviewOnly.classList.toggle('active', reviewOnly);
-    ui.reviewAll.setAttribute('aria-pressed', String(!reviewOnly));
-    ui.reviewOnly.setAttribute('aria-pressed', String(reviewOnly));
-    ui.reviewHelp.textContent = reviewOnly
-      ? (marked ? `苦手チェックを付けた${marked}問だけを、現在の読み上げ設定で再生します。`
-        : '苦手チェックがまだありません。下の英文をチェックすると再生できます。')
-      : 'すべての英文を順番に再生します。';
-    ui.reviewAll.disabled = isPlaying;
-    ui.reviewOnly.disabled = isPlaying;
-    for (const row of reviewInputs) row.input.disabled = isPlaying;
-    updateValidationButtonsOnly();
+  function countDifficult(items) {
+    return items.filter(item => progressItem(reviewKey(item.english)).rating === 'learning').length;
   }
 
-  function renderReviewList(items) {
-    reviewInputs = [];
-    ui.reviewList.replaceChildren();
-    if (!items.length) {
-      const empty = document.createElement('p');
-      empty.className = 'review-help';
-      empty.textContent = '教材を入力すると、ここに英文が表示されます。';
-      ui.reviewList.append(empty);
-    }
-    items.forEach((item, index) => {
-      const key = reviewKey(item.english);
-      const label = document.createElement('label');
-      label.className = 'review-item';
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = reviewKeys.has(key);
-      checkbox.disabled = isPlaying;
-      checkbox.setAttribute('aria-label', `第${index + 1}問を苦手として登録`);
-      const content = document.createElement('span');
-      content.className = 'review-item-text';
-      const en = document.createElement('span');
-      en.className = 'review-english';
-      en.textContent = `${index + 1}. ${item.english}`;
-      content.append(en);
-      if (item.japanese) {
-        const ja = document.createElement('span');
-        ja.className = 'review-japanese';
-        ja.textContent = item.japanese;
-        content.append(ja);
-      }
-      label.append(checkbox);
-      label.append(content);
-      ui.reviewList.append(label);
-      reviewInputs.push({ key, input: checkbox });
-      checkbox.addEventListener('change', () => {
-        if (isPlaying) return;
-        if (checkbox.checked && (key.length > 2000 || (reviewKeys.size >= 1000 && !reviewKeys.has(key)))) {
-          checkbox.checked = false;
-          setNotice('苦手チェックの保存上限に達しました。', 'error');
-          return;
-        }
-        if (checkbox.checked) reviewKeys.add(key); else reviewKeys.delete(key);
-        for (const row of reviewInputs) {
-          if (row.key === key) row.input.checked = checkbox.checked;
-        }
-        save();
-        updateReviewIndicators(items);
-      });
-    });
-    updateReviewIndicators(items);
+  function updateDifficultUI(items = parseMaterials(ui.materials.value).items) {
+    const count = countDifficult(items);
+    const special = repeatMode === 'sentence' || repeatMode === 'segment';
+    ui.difficultToggle.textContent = `🎯 苦手のみ再生 ${reviewOnly ? 'ON' : 'OFF'}（${count}問）`;
+    ui.difficultToggle.classList.toggle('active', reviewOnly && !special);
+    ui.difficultToggle.setAttribute('aria-pressed', String(reviewOnly));
+    ui.difficultToggle.disabled = isPlaying || special || progressStorageError;
+    ui.difficultToggle.setAttribute('aria-label', special
+      ? '1文または一部分のリピート中は苦手のみ再生を変更できません'
+      : `苦手のみ再生を${reviewOnly ? 'オフ' : 'オン'}にする。対象は${count}問`);
+    ui.difficultToggle.title = special ? '1文・一部分のリピートを優先します' : 'まだ苦手と評価した英文だけを再生';
+    if (!isPlaying) updateValidationButtonsOnly();
   }
 
-  function toggleReviewMode(enabled) {
-    if (isPlaying) return;
-    reviewOnly = enabled;
+  function toggleDifficult() {
+    if (isPlaying || progressStorageError || repeatMode === 'sentence' || repeatMode === 'segment') return;
+    reviewOnly = !reviewOnly;
+    updateDifficultUI();
     updateValidation();
     save();
+    const matches = countDifficult(parseMaterials(ui.materials.value).items);
+    setNotice(reviewOnly
+      ? (matches ? `「まだ苦手」の${matches}問だけを再生します。` :
+        '今の教材には「まだ苦手」の英文がありません。学習記録・習熟度で評価してください。')
+      : 'すべての英文を再生する設定に戻しました。');
   }
 
   function repeatTargets(items) {
@@ -702,7 +638,7 @@
       const snippet = repeatSegment.trim();
       return snippet ? [{ english: snippet, japanese: '' }] : [];
     }
-    return reviewOnly ? items.filter(item => reviewKeys.has(reviewKey(item.english))) : items;
+    return reviewOnly ? items.filter(item => progressItem(reviewKey(item.english)).rating === 'learning') : items;
   }
 
   function updateRepeatUI(items) {
@@ -731,6 +667,7 @@
         : repeatMode === 'segment'
           ? '入力した英語の部分だけを、設定した間隔をあけて繰り返します。'
           : '最後まで再生すると終了します。';
+    updateDifficultUI(items);
     ui.repeatToggle.classList.toggle('active', repeatMode !== 'off');
     ui.repeatToggle.setAttribute('aria-label', repeatMode === 'off' ? 'リピートの設定を開く'
       : 'リピート設定を変更（' + ({all:'全体',sentence:'1文',segment:'一部分'}[repeatMode]) + '）');
@@ -836,6 +773,40 @@
       progressStorageError = true;
       return emptyProgress();
     }
+  }
+
+  function migrateLegacyReviewKeys(stored) {
+    if (!Array.isArray(stored.reviewKeys) || !stored.reviewKeys.length || progressStorageError) return;
+    const originals = new Map();
+    let changed = false;
+    for (const raw of stored.reviewKeys.slice(0, 1000)) {
+      if (typeof raw !== 'string' || !raw.trim() || raw.length > 2000) continue;
+      const key = reviewKey(raw);
+      const prior = progressData.items[key];
+      if (prior && prior.rating !== 'unrated') continue; // 既に評価済みならそちらを優先
+      if (!prior && Object.keys(progressData.items).length >= 5000) break;
+      if (!originals.has(key)) originals.set(key, prior);
+      progressData.items[key] = { ...progressItem(key), rating: 'learning',
+        lastRatedAt: Date.now(), streak: 0 };
+      changed = true;
+    }
+    if (changed && !saveProgress()) {
+      // 評価を保存できなければ元データを維持し、次回また移行を試みる
+      for (const [key, oldValue] of originals) {
+        if (oldValue === undefined) delete progressData.items[key];
+        else progressData.items[key] = oldValue;
+      }
+      return;
+    }
+    // 完了後、旧形式の重複チェックを除去。保存に失敗しても繰り返し移行は安全。
+    try {
+      const rawStored = localStorage.getItem(STORAGE_KEY);
+      const updated = rawStored ? JSON.parse(rawStored) : null;
+      if (updated && typeof updated === 'object') {
+        delete updated.reviewKeys;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      }
+    } catch (_) {}
   }
 
   function saveProgress() {
@@ -955,6 +926,8 @@
       ? '「理解できた」を保存しました。次回の復習にも反映します。'
       : '「まだ苦手」を保存しました。次回も確認してみよう。';
     ui.progressNotice.dataset.error = 'false';
+    // 評価した瞬間にプレイヤーの対象件数を同期。再生中の出題順は変えない。
+    updateDifficultUI();
   }
 
   function recordPlayedEnglish(english) {
@@ -1310,7 +1283,6 @@
     }
     updateLibraryButtons();
     updateSettingsSummary();
-    renderReviewList(items);
     updateRepeatUI(items);
     drawProgressOverview();
     renderMasteryRows(items);
@@ -1506,9 +1478,7 @@
     ui.repeatMode.disabled = value;
     ui.repeatSentence.disabled = value || repeatMode !== 'sentence';
     ui.repeatSegment.disabled = value || repeatMode !== 'segment';
-    ui.reviewAll.disabled = value;
-    ui.reviewOnly.disabled = value;
-    for (const row of reviewInputs) row.input.disabled = value;
+    ui.difficultToggle.disabled = value || repeatMode === 'sentence' || repeatMode === 'segment' || progressStorageError;
     ui.backupExport.disabled = value;
     ui.backupImport.disabled = value;
     ui.formatEnglish.disabled = value;
@@ -1884,9 +1854,7 @@
   repeatSentenceKey = typeof stored.repeatSentenceKey === 'string' ? stored.repeatSentenceKey : '';
   repeatSegment = typeof stored.repeatSegment === 'string' ? stored.repeatSegment : '';
   reviewOnly = stored.reviewOnly === true;
-  reviewKeys = new Set(Array.isArray(stored.reviewKeys)
-    ? stored.reviewKeys.filter(value => typeof value === 'string' && value.length > 0 && value.length <= 2000).slice(0, 1000)
-    : []);
+  migrateLegacyReviewKeys(stored);
   drafts.paired = typeof stored.pairedDraft === 'string' ? stored.pairedDraft
     : (typeof stored.text === 'string' ? stored.text : EXAMPLE);
   drafts.english = typeof stored.englishDraft === 'string' ? stored.englishDraft : '';
@@ -1931,8 +1899,7 @@
     updateValidationButtonsOnly();
     save();
   });
-  ui.reviewAll.addEventListener('click', () => toggleReviewMode(false));
-  ui.reviewOnly.addEventListener('click', () => toggleReviewMode(true));
+  ui.difficultToggle.addEventListener('click', toggleDifficult);
   ui.backupExport.addEventListener('click', exportBackup);
   ui.backupImport.addEventListener('click', () => {
     if (!isPlaying) ui.backupFile.click();
