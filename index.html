@@ -225,7 +225,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.2.2</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -238,6 +238,7 @@
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
     <div class="shuffle-row"><button type="button" id="shuffle-toggle" class="shuffle-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム OFF</button></div>
     <div class="shuffle-row difficult-row"><button type="button" id="difficult-toggle" class="shuffle-chip" aria-pressed="false" aria-label="まだ苦手な英文のみ再生する">🎯 苦手のみ再生 OFF（0問）</button></div>
+    <div class="shuffle-row difficult-row"><button type="button" id="due-toggle" class="shuffle-chip" aria-pressed="false" aria-label="今日が復習日になった英文のみ再生する">📅 今日の復習 OFF（0問）</button></div>
     <div class="now-playing">
       <p id="display-text" class="playing-big">準備完了！</p>
       <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
@@ -471,7 +472,7 @@
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, reviewKeys: [], repeatMode: 'off', repeatSentenceKey: '', repeatSegment: '', shuffle: false, hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, dueOnly: false, reviewKeys: [], repeatMode: 'off', repeatSentenceKey: '', repeatSegment: '', shuffle: false, hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
@@ -480,7 +481,7 @@
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
     libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
-    difficultToggle: $('difficult-toggle'),
+    difficultToggle: $('difficult-toggle'), dueToggle: $('due-toggle'),
     backupExport: $('backup-export'), backupImport: $('backup-import'),
     backupFile: $('backup-file'), backupStatus: $('backup-status'),
     mode: $('mode'), modeInfo: $('mode-info'), answerTiming: $('answer-timing'), answerInfo: $('answer-info'),
@@ -534,6 +535,7 @@
   let progressData = { version: 1, totalPlays: 0, daily: {}, items: {} };
 
   let reviewOnly = false;
+  let dueOnly = false;
   let inputMode = 'paired';
   const drafts = { paired: EXAMPLE, english: '' };
 
@@ -583,7 +585,7 @@
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
       libraryName: ui.libraryName.value, hideText: ui.hideText.checked,
-      reviewOnly,
+      reviewOnly, dueOnly,
       repeatMode, repeatSentenceKey, repeatSegment, shuffle: shuffleEnabled
     };
   }
@@ -600,6 +602,59 @@
 
   function countDifficult(items) {
     return items.filter(item => progressItem(reviewKey(item.english)).rating === 'learning').length;
+  }
+
+  // 学習の目安：正答の自己評価が増えるごとに復習間隔を伸ばす。
+  const REVIEW_INTERVALS = [1, 3, 7, 14, 30];
+  function dueDayOf(key) {
+    const item = progressItem(key);
+    if (item.rating === 'learning') return localDay();
+    if (item.rating !== 'known') return null;
+    if (!item.lastRatedAt) return localDay();
+    const days = REVIEW_INTERVALS[Math.min(Math.max(item.streak, 1), 5) - 1];
+    const date = new Date(item.lastRatedAt);
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() + days);
+    return localDay(date.getTime());
+  }
+
+  function isDueForReview(key, today = localDay()) {
+    const due = dueDayOf(key);
+    return due !== null && due <= today;
+  }
+
+  function countDue(items) {
+    return items.filter(item => isDueForReview(reviewKey(item.english))).length;
+  }
+
+  function updateDueUI(items = parseMaterials(ui.materials.value).items) {
+    const count = countDue(items);
+    const special = repeatMode === 'sentence' || repeatMode === 'segment';
+    ui.dueToggle.textContent = `📅 今日の復習 ${dueOnly ? 'ON' : 'OFF'}（${count}問）`;
+    ui.dueToggle.classList.toggle('active', dueOnly && !special);
+    ui.dueToggle.setAttribute('aria-pressed', String(dueOnly));
+    ui.dueToggle.disabled = isPlaying || special || progressStorageError;
+    ui.dueToggle.setAttribute('aria-label', special
+      ? '1文・一部分のリピート中は今日の復習を変更できません'
+      : `今日の復習を${dueOnly ? 'オフ' : 'オン'}にする。対象は${count}問`);
+    ui.dueToggle.title = special ? '1文・一部分のリピートを優先します'
+      : '復習予定日が今日以前になった英文だけを再生';
+    if (!isPlaying) updateValidationButtonsOnly();
+  }
+
+  function toggleDue() {
+    if (isPlaying || progressStorageError || repeatMode === 'sentence' || repeatMode === 'segment') return;
+    dueOnly = !dueOnly;
+    if (dueOnly) reviewOnly = false;
+    updateDifficultUI();
+    updateDueUI();
+    updateValidation();
+    save();
+    const count = countDue(parseMaterials(ui.materials.value).items);
+    setNotice(dueOnly
+      ? (count ? `復習予定日を迎えた${count}問を再生します。`
+        : '今の教材に今日の復習問題はありません。「まだ苦手」または「理解できた」で評価すると復習予定が決まります。')
+      : '今日の復習フィルターをオフにしました。');
   }
 
   function updateDifficultUI(items = parseMaterials(ui.materials.value).items) {
@@ -619,7 +674,9 @@
   function toggleDifficult() {
     if (isPlaying || progressStorageError || repeatMode === 'sentence' || repeatMode === 'segment') return;
     reviewOnly = !reviewOnly;
+    if (reviewOnly) dueOnly = false;
     updateDifficultUI();
+    updateDueUI();
     updateValidation();
     save();
     const matches = countDifficult(parseMaterials(ui.materials.value).items);
@@ -638,7 +695,9 @@
       const snippet = repeatSegment.trim();
       return snippet ? [{ english: snippet, japanese: '' }] : [];
     }
-    return reviewOnly ? items.filter(item => progressItem(reviewKey(item.english)).rating === 'learning') : items;
+    if (reviewOnly) return items.filter(item => progressItem(reviewKey(item.english)).rating === 'learning');
+    if (dueOnly) return items.filter(item => isDueForReview(reviewKey(item.english)));
+    return items;
   }
 
   function updateRepeatUI(items) {
@@ -668,6 +727,7 @@
           ? '入力した英語の部分だけを、設定した間隔をあけて繰り返します。'
           : '最後まで再生すると終了します。';
     updateDifficultUI(items);
+    updateDueUI(items);
     ui.repeatToggle.classList.toggle('active', repeatMode !== 'off');
     ui.repeatToggle.setAttribute('aria-label', repeatMode === 'off' ? 'リピートの設定を開く'
       : 'リピート設定を変更（' + ({all:'全体',sentence:'1文',segment:'一部分'}[repeatMode]) + '）');
@@ -836,7 +896,8 @@
     ui.statTotal.textContent = String(progressData.totalPlays);
     ui.statKnown.textContent = String(known);
     ui.progressBrief.textContent = `今日 ${daily.plays}回 · 理解 ${known}文`;
-    ui.masterySummary.textContent = `自己評価：理解できた ${known}文 ／ 要復習 ${learning}文。下から今の教材を評価できます。`;
+    const current = parseMaterials(ui.materials.value).items;
+    ui.masterySummary.textContent = `理解できた ${known}文 ／ まだ苦手 ${learning}文。今の教材で今日の復習対象は ${countDue(current)}問。理解度を評価すると次回の予定が更新されます。`;
     ui.studyChart.replaceChildren();
     const days = Array.from({length: 7}, (_, i) => {
       const d = new Date();
@@ -858,6 +919,16 @@
     }
   }
 
+  function masteryDetail(key, status) {
+    if (status.rating === 'known') {
+      const day = dueDayOf(key);
+      const short = day ? `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}` : '未設定';
+      return `再生 ${status.heard}回 · 理解できた · ${isDueForReview(key) ? '今日の復習対象' : `次回の復習 ${short}`}`;
+    }
+    if (status.rating === 'learning') return `再生 ${status.heard}回 · まだ苦手 · 今日の復習対象`;
+    return `再生 ${status.heard}回 · 未評価 · 復習予定なし`;
+  }
+
   function renderMasteryRows(items = parseMaterials(ui.materials.value).items) {
     ui.masteryList.replaceChildren();
     const seen = new Set();
@@ -869,7 +940,7 @@
       const row = document.createElement('div'); row.className = 'mastery-row';
       const en = document.createElement('div'); en.className = 'mastery-en'; en.textContent = item.english;
       const detail = document.createElement('div'); detail.className = 'mastery-info';
-      detail.textContent = `再生 ${status.heard}回 · ${status.rating === 'known' ? '理解できた' : status.rating === 'learning' ? '要復習' : '未評価'}`;
+      detail.textContent = masteryDetail(key, status);
       const actions = document.createElement('div'); actions.className = 'mastery-actions';
       for (const [rating,label] of [['learning','↻ まだ苦手'],['known','✓ 理解できた']]) {
         const button = document.createElement('button');
@@ -911,7 +982,7 @@
 
     // DOMを作り直さず更新することで、タップ位置・スクロール位置を保つ。
     if (detail && actions) {
-      detail.textContent = `再生 ${next.heard}回 · ${rating === 'known' ? '理解できた' : '要復習'}`;
+      detail.textContent = masteryDetail(key, next);
       for (const button of actions.children) {
         const selected = (rating === 'known' && button.textContent.includes('理解できた')) ||
           (rating === 'learning' && button.textContent.includes('まだ苦手'));
@@ -926,8 +997,10 @@
       ? '「理解できた」を保存しました。次回の復習にも反映します。'
       : '「まだ苦手」を保存しました。次回も確認してみよう。';
     ui.progressNotice.dataset.error = 'false';
-    // 評価した瞬間にプレイヤーの対象件数を同期。再生中の出題順は変えない。
+    // 今日の復習候補・苦手候補も即時更新。現在再生中の出題順は固定。
     updateDifficultUI();
+    updateDueUI();
+    if (ui.progressDetails.open) renderMasteryRows();
   }
 
   function recordPlayedEnglish(english) {
@@ -1034,6 +1107,7 @@
         (a.repeatSentenceKey !== undefined && (typeof a.repeatSentenceKey !== 'string' || a.repeatSentenceKey.length > 2000)) ||
         (a.repeatSegment !== undefined && (typeof a.repeatSegment !== 'string' || a.repeatSegment.length > 500)) ||
         (a.reviewOnly !== undefined && typeof a.reviewOnly !== 'boolean') ||
+        (a.dueOnly !== undefined && typeof a.dueOnly !== 'boolean') ||
         (a.reviewKeys !== undefined && (
           !Array.isArray(a.reviewKeys) || a.reviewKeys.length > 1000 ||
           !a.reviewKeys.every(value => typeof value === 'string' && value.length > 0 && value.length <= 2000))) ||
@@ -1050,7 +1124,9 @@
       libraryName: a.libraryName, voice: a.voice, japaneseVoice: a.japaneseVoice,
       rate: String(a.rate), repeats: String(a.repeats), gap: String(a.gap),
       hideText: a.hideText, mode: a.mode, answerTiming: a.answerTiming,
-      reviewOnly: a.reviewOnly === true, reviewKeys: Array.isArray(a.reviewKeys) ? [...new Set(a.reviewKeys)] : [],
+      reviewOnly: a.reviewOnly === true && a.dueOnly !== true,
+      dueOnly: a.dueOnly === true,
+      reviewKeys: Array.isArray(a.reviewKeys) ? [...new Set(a.reviewKeys)] : [],
       repeatMode: ['off', 'all', 'sentence', 'segment'].includes(a.repeatMode) ? a.repeatMode : 'off',
       repeatSentenceKey: typeof a.repeatSentenceKey === 'string' ? a.repeatSentenceKey : '',
       repeatSegment: typeof a.repeatSegment === 'string' ? a.repeatSegment : '',
@@ -1479,6 +1555,7 @@
     ui.repeatSentence.disabled = value || repeatMode !== 'sentence';
     ui.repeatSegment.disabled = value || repeatMode !== 'segment';
     ui.difficultToggle.disabled = value || repeatMode === 'sentence' || repeatMode === 'segment' || progressStorageError;
+    ui.dueToggle.disabled = value || repeatMode === 'sentence' || repeatMode === 'segment' || progressStorageError;
     ui.backupExport.disabled = value;
     ui.backupImport.disabled = value;
     ui.formatEnglish.disabled = value;
@@ -1808,7 +1885,10 @@
     const shuffleThisSession = shuffleEnabled && repeatMode !== 'sentence' && repeatMode !== 'segment';
     const playItems = shuffleThisSession ? shuffleItems(candidates) : candidates;
     if (!playItems.length) {
-      setNotice('復習する英文にチェックを付けてください。', 'error'); return;
+      setNotice(dueOnly ? '今日の復習対象がありません。学習記録・習熟度を確認してください。'
+        : reviewOnly ? '「まだ苦手」と評価した英文がありません。'
+        : '再生する英文がありません。', 'error');
+      return;
     }
     // 同期的に、タップした処理の中から最初のspeak()を実行する。
     // iPhoneで必要になるユーザー操作を保つため、開始前にはawaitを入れない。
@@ -1853,7 +1933,8 @@
   repeatMode = ['off', 'all', 'sentence', 'segment'].includes(stored.repeatMode) ? stored.repeatMode : 'off';
   repeatSentenceKey = typeof stored.repeatSentenceKey === 'string' ? stored.repeatSentenceKey : '';
   repeatSegment = typeof stored.repeatSegment === 'string' ? stored.repeatSegment : '';
-  reviewOnly = stored.reviewOnly === true;
+  dueOnly = stored.dueOnly === true;
+  reviewOnly = stored.reviewOnly === true && !dueOnly;
   migrateLegacyReviewKeys(stored);
   drafts.paired = typeof stored.pairedDraft === 'string' ? stored.pairedDraft
     : (typeof stored.text === 'string' ? stored.text : EXAMPLE);
@@ -1900,6 +1981,12 @@
     save();
   });
   ui.difficultToggle.addEventListener('click', toggleDifficult);
+  ui.dueToggle.addEventListener('click', toggleDue);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !isPlaying) {
+      updateValidation();
+    }
+  });
   ui.backupExport.addEventListener('click', exportBackup);
   ui.backupImport.addEventListener('click', () => {
     if (!isPlaying) ui.backupFile.click();
