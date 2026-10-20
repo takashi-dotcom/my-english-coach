@@ -150,15 +150,101 @@
     .footer { text-align: center; margin-top: 17px; color: var(--sub); font-size: 12px; line-height: 1.7; }
     @media (max-width: 350px) { .card { padding: 16px 13px; } .settings { gap: 11px; } .buttons { grid-template-columns: 1.4fr 1fr; } }
     @media (prefers-reduced-motion: reduce) { .progress-fill { transition: none; } }
+    /* v1.0.2: iPhone-first compact playback dashboard */
+    .head { padding-bottom: 12px; }
+    .player { padding: 17px 15px 14px; margin-bottom: 13px; border-color: var(--primary); }
+    .player-title { font-size: 15px; color: var(--text); font-weight: 790; }
+    .now-playing { min-height: 67px; padding: 14px 3px 13px; }
+    .playing-big { font-size: clamp(17px, 4.7vw, 21px); }
+    .playing-sub { font-size: 12px; margin-top: 5px; }
+    .control-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .control-button { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; min-width: 0; min-height: 57px; padding: 4px 0; color: var(--text); background: var(--surface-alt); border: 1px solid var(--line); border-radius: 11px; }
+    .control-button .control-symbol { font-size: 22px; line-height: 1.2; font-weight: 800; }
+    .control-button .control-caption { font-size: 9px; line-height: 1.3; font-weight: 690; white-space: nowrap; letter-spacing: -.04em; }
+    .control-button.play { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+    .control-button.active { color: var(--primary); background: var(--accent); border-color: var(--primary); }
+    .control-button:disabled { opacity: .38; }
+    .repeat-controls { padding: 12px; margin-top: 11px; background: var(--surface-alt); border: 1px solid var(--line); border-radius: 13px; }
+    .repeat-controls[hidden] { display: none; }
+    .repeat-controls label { display: block; font-size: 12px; font-weight: 740; margin-bottom: 6px; }
+    .repeat-controls select, .repeat-controls input { width: 100%; min-height: 43px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 14px; color: var(--text); background: var(--surface); }
+    .repeat-controls .repeat-detail { margin-top: 10px; }
+    .repeat-controls .repeat-detail[hidden] { display: none; }
+    .player .notice { margin-top: 8px; line-height: 1.5; }
+    .fold-card { padding: 0; }
+    .fold-card details > summary { list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .fold-card details > summary::-webkit-details-marker { display: none; }
+    .fold-summary { min-height: 63px; display: flex; gap: 9px; padding: 14px 16px; justify-content: space-between; align-items: center; }
+    .fold-heading { min-width: 0; font-weight: 760; font-size: 16px; }
+    .fold-meta { font-size: 11px; color: var(--sub); text-align: right; line-height: 1.35; }
+    .fold-summary::after { content: "⌄"; font-size: 21px; line-height: 1; color: var(--sub); transition: transform .15s ease; }
+    .fold-card details[open] > .fold-summary::after { transform: rotate(180deg); }
+    .fold-content { border-top: 1px solid var(--line); padding: 15px 16px 17px; }
+    .fold-content .settings { gap: 10px; }
+    .fold-content .field select { min-height: 42px; }
+    .fold-card .review-list { max-height: 285px; }
+    .format-card { padding: 12px 15px; }
+    .format-card .format-label { margin-bottom: 7px; }
+    .format-card .format-tab { min-height: 42px; }
+    .material-head-hint { color: var(--sub); font-size: 12px; }
+    @media (max-width: 365px) {
+      .control-strip { gap: 3px; }
+      .control-button { min-height: 54px; border-radius: 9px; }
+      .control-button .control-symbol { font-size: 20px; }
+      .control-button .control-caption { font-size: 8px; }
+      .fold-heading { font-size: 15px; }
+      .fold-summary { padding-left: 13px; padding-right: 13px; }
+    }
   </style>
 </head>
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.0.1</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.0.2</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
+
+  <section class="player" id="player-panel" aria-labelledby="player-title">
+    <div class="player-top">
+      <span id="player-title" class="player-title">01　リスニングプレイヤー</span>
+      <span id="position" class="question-no">0 / 3 問</span>
+    </div>
+    <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="now-playing">
+      <p id="display-text" class="playing-big">準備完了！</p>
+      <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
+    </div>
+    <div class="control-strip" role="group" aria-label="リスニング再生操作">
+      <button type="button" id="previous-question" class="control-button" aria-label="前の問題" title="前の問題" disabled><span class="control-symbol">⏮</span><span class="control-caption">前へ</span></button>
+      <button type="button" id="replay-question" class="control-button" aria-label="現在の問題をもう一度聞く" title="もう一度聞く" disabled><span class="control-symbol">↻</span><span class="control-caption">もう一度</span></button>
+      <button type="button" id="start" class="control-button play" aria-label="最初から再生" title="最初から再生"><span class="control-symbol">▶</span><span class="control-caption">再生</span></button>
+      <button type="button" id="pause-resume" class="control-button" aria-label="一時停止" title="一時停止" disabled><span class="control-symbol" id="pause-symbol">⏸</span><span class="control-caption" id="pause-caption">停止中断</span></button>
+      <button type="button" id="next-question" class="control-button" aria-label="次の問題" title="次の問題" disabled><span class="control-symbol">⏭</span><span class="control-caption">次へ</span></button>
+      <button type="button" id="stop" class="control-button" aria-label="再生を停止" title="停止" disabled><span class="control-symbol">⏹</span><span class="control-caption">停止</span></button>
+      <button type="button" id="repeat-toggle" class="control-button" aria-label="リピートの設定を開く" aria-expanded="false" aria-controls="repeat-controls" title="リピート設定"><span class="control-symbol">🔁</span><span class="control-caption">リピート</span></button>
+    </div>
+    <div class="repeat-controls" id="repeat-controls" hidden>
+      <label for="repeat-mode">リピートの種類</label>
+      <select id="repeat-mode">
+        <option value="off">リピートしない（通常再生）</option>
+        <option value="all">教材の最後から最初へ繰り返す</option>
+        <option value="sentence">選んだ英文1つだけを繰り返す</option>
+        <option value="segment">指定した英文の一部分を繰り返す</option>
+      </select>
+      <div class="repeat-detail" id="repeat-sentence-box" hidden>
+        <label for="repeat-sentence">繰り返す英文</label>
+        <select id="repeat-sentence"></select>
+      </div>
+      <div class="repeat-detail" id="repeat-segment-box" hidden>
+        <label for="repeat-segment">繰り返す部分</label>
+        <input id="repeat-segment" type="text" maxlength="500" placeholder="例：My dog is" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <p class="repeat-info">英文の一部分を入力すると、その英語だけを繰り返します。</p>
+      </div>
+      <p class="repeat-info" id="repeat-info">最後まで再生すると終了します。</p>
+    </div>
+    <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">最初は ▶ をタップしてください。🔁 で繰り返し設定を開けます。</p>
+  </section>
 
   <section class="card format-card" aria-label="教材の入力形式">
     <span class="format-label">まず、教材の形式を選ぼう</span>
@@ -171,7 +257,7 @@
 
   <section class="card" id="material-card" aria-labelledby="material-title">
     <div class="section-head">
-      <h2 class="section-title" id="material-title">01　英文を貼り付ける</h2>
+      <h2 class="section-title" id="material-title">02　英文を貼り付ける</h2>
       <span class="count" id="question-count">3問</span>
     </div>
     <label for="materials" class="caption" id="format-label">1行につき「英文 | 日本語訳」を1セット</label>
@@ -180,51 +266,13 @@
     <div id="validation" class="validation good" role="status" aria-live="polite"></div>
   </section>
 
-  <section class="card" id="library-card" aria-labelledby="library-title">
-    <div class="section-head">
-      <h2 class="section-title" id="library-title">02　教材ライブラリ</h2>
-      <span id="library-count" class="count">保存済み 0件</span>
-    </div>
-    <div class="library-field">
-      <label for="library-name">教材のタイトル</label>
-      <input class="library-input" id="library-name" type="text" maxlength="60" placeholder="例：通勤英語 10月20日" autocomplete="off">
-    </div>
-    <div class="library-row">
-      <button type="button" class="library-btn library-primary" id="library-save">この教材を保存</button>
-      <button type="button" class="library-btn" id="library-clear-name">別名で保存する</button>
-    </div>
-    <div class="library-field">
-      <label for="library-select">保存した教材</label>
-      <select id="library-select"><option value="">保存した教材を選択</option></select>
-    </div>
-    <div class="library-row">
-      <button type="button" class="library-btn" id="library-load">教材を呼び出す</button>
-      <button type="button" class="library-btn library-danger" id="library-delete">教材を削除</button>
-    </div>
-    <p id="library-status" class="library-status" role="status" aria-live="polite">現在の教材をタイトル付きで保存できます。</p>
-    <p class="hint">同じタイトルで保存すると、確認後に上書きします。保存はこのiPhoneのブラウザ内だけです。</p>
-  </section>
-
-  <section class="card" id="backup-card" aria-labelledby="backup-title">
-    <div class="section-head">
-      <h2 class="section-title" id="backup-title">03　バックアップ・復元</h2>
-      <span class="tiny">機種変更に備える</span>
-    </div>
-    <p class="backup-hint">保存済み教材・入力途中の英文・読み上げ設定をひとまとめにします。</p>
-    <div class="library-row">
-      <button type="button" class="library-btn library-primary" id="backup-export">⬇ バックアップ保存</button>
-      <button type="button" class="library-btn" id="backup-import">⬆ ファイルから復元</button>
-    </div>
-    <input type="file" id="backup-file" class="backup-file" accept=".json,application/json" aria-label="バックアップファイルを選択">
-    <p id="backup-status" class="backup-status" role="status" aria-live="polite">書き出したファイルはiPhoneの「ファイル」など、安全な場所に保存してください。</p>
-    <p class="backup-hint">復元時には今のデータを置き換えます。実行前に確認画面を表示します。</p>
-  </section>
-
-  <section class="card" aria-labelledby="settings-title">
-    <div class="section-head">
-      <h2 class="section-title" id="settings-title">04　読み上げ設定</h2>
-      <span class="tiny">変更は自動保存</span>
-    </div>
+  <section class="card fold-card" aria-labelledby="settings-title">
+    <details id="settings-details">
+      <summary class="fold-summary">
+        <span class="fold-heading" id="settings-title">03　読み上げ設定</span>
+        <span class="fold-meta"><span id="settings-brief">0.85× · 2回 · 5秒</span></span>
+      </summary>
+      <div class="fold-content">
     <div class="settings">
       <div class="full field" id="playback-mode-field">
         <label for="mode">学習モード</label>
@@ -302,13 +350,17 @@
         <label class="check-row" for="hide-text"><input id="hide-text" type="checkbox"> <span>再生中は英文を隠す（リスニングテスト用）</span></label>
       </div>
     </div>
+      </div>
+    </details>
   </section>
 
-  <section class="card" id="review-card" aria-labelledby="review-title">
-    <div class="section-head">
-      <h2 class="section-title" id="review-title">05　苦手な英文を復習</h2>
-      <span class="count" id="review-count">苦手 0 / 0問</span>
-    </div>
+  <section class="card fold-card" id="review-card" aria-labelledby="review-title">
+    <details id="review-details">
+      <summary class="fold-summary">
+        <span class="fold-heading" id="review-title">04　苦手な英文を復習</span>
+        <span class="fold-meta"><span class="count" id="review-count">苦手 0 / 0問</span></span>
+      </summary>
+      <div class="fold-content">
     <p class="review-help">復習したい英文にチェックを付けよう。チェックは自動保存されるぞ。</p>
     <div class="review-switch" role="group" aria-label="再生する問題の選択">
       <button type="button" class="review-tab active" id="review-all" aria-pressed="true">すべて再生</button>
@@ -317,49 +369,56 @@
     <p class="review-help" id="review-help">すべての英文を順番に再生します。</p>
     <div class="review-list" id="review-list" aria-label="復習チェック一覧"></div>
     <p class="review-help">同じ英文は、別の教材で登場しても苦手チェックが引き継がれます。</p>
+      </div>
+    </details>
   </section>
 
-  <section class="player" aria-labelledby="player-title">
-    <div class="player-top">
-      <span id="player-title" class="player-title">06　リスニングプレイヤー</span>
-      <span id="position" class="question-no">0 / 3 問</span>
+  <section class="card fold-card" id="library-card" aria-labelledby="library-title">
+    <details id="library-details">
+      <summary class="fold-summary">
+        <span class="fold-heading" id="library-title">05　教材ライブラリ</span>
+        <span class="fold-meta"><span class="count" id="library-count">保存済み 0件</span></span>
+      </summary>
+      <div class="fold-content">
+    <div class="library-field">
+      <label for="library-name">教材のタイトル</label>
+      <input class="library-input" id="library-name" type="text" maxlength="60" placeholder="例：通勤英語 10月20日" autocomplete="off">
     </div>
-    <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress" ><div class="progress-fill" id="progress-fill"></div></div>
-    <div class="now-playing">
-      <p id="display-text" class="playing-big">準備完了！</p>
-      <p id="display-sub" class="playing-sub">「最初から再生」を押してスタート</p>
+    <div class="library-row">
+      <button type="button" class="library-btn library-primary" id="library-save">この教材を保存</button>
+      <button type="button" class="library-btn" id="library-clear-name">別名で保存する</button>
     </div>
-    <div class="repeat-box" aria-label="リピート再生の設定">
-      <label for="repeat-mode">🔁 リピート再生</label>
-      <select id="repeat-mode">
-        <option value="off">リピートしない（通常再生）</option>
-        <option value="all">教材の最後から最初へ繰り返す</option>
-        <option value="sentence">選んだ英文1つだけを繰り返す</option>
-        <option value="segment">指定した英文の一部分を繰り返す</option>
-      </select>
-      <div class="repeat-detail" id="repeat-sentence-box" hidden>
-        <label for="repeat-sentence">繰り返す英文を選ぶ</label>
-        <select id="repeat-sentence"></select>
+    <div class="library-field">
+      <label for="library-select">保存した教材</label>
+      <select id="library-select"><option value="">保存した教材を選択</option></select>
+    </div>
+    <div class="library-row">
+      <button type="button" class="library-btn" id="library-load">教材を呼び出す</button>
+      <button type="button" class="library-btn library-danger" id="library-delete">教材を削除</button>
+    </div>
+    <p id="library-status" class="library-status" role="status" aria-live="polite">現在の教材をタイトル付きで保存できます。</p>
+    <p class="hint">同じタイトルで保存すると、確認後に上書きします。保存はこのiPhoneのブラウザ内だけです。</p>
       </div>
-      <div class="repeat-detail" id="repeat-segment-box" hidden>
-        <label for="repeat-segment">繰り返す部分を入力</label>
-        <input id="repeat-segment" type="text" maxlength="500" placeholder="例：My dog is" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <p class="repeat-info">英文の一部分をコピーして貼り付けよう。入力した部分だけを英語で繰り返します。</p>
+    </details>
+  </section>
+
+  <section class="card fold-card" id="backup-card" aria-labelledby="backup-title">
+    <details id="backup-details">
+      <summary class="fold-summary">
+        <span class="fold-heading" id="backup-title">06　バックアップ・復元</span>
+        <span class="fold-meta">保存・復元</span>
+      </summary>
+      <div class="fold-content">
+    <p class="backup-hint">保存済み教材・入力途中の英文・読み上げ設定をひとまとめにします。</p>
+    <div class="library-row">
+      <button type="button" class="library-btn library-primary" id="backup-export">⬇ バックアップ保存</button>
+      <button type="button" class="library-btn" id="backup-import">⬆ ファイルから復元</button>
+    </div>
+    <input type="file" id="backup-file" class="backup-file" accept=".json,application/json" aria-label="バックアップファイルを選択">
+    <p id="backup-status" class="backup-status" role="status" aria-live="polite">書き出したファイルはiPhoneの「ファイル」など、安全な場所に保存してください。</p>
+    <p class="backup-hint">復元時には今のデータを置き換えます。実行前に確認画面を表示します。</p>
       </div>
-      <p class="repeat-info" id="repeat-info">最後まで再生すると終了します。</p>
-    </div>
-    <div class="buttons">
-      <button type="button" class="main-btn" id="start">▶ 最初から再生</button>
-      <button type="button" class="stop-btn" id="stop" disabled>■ 停止</button>
-    </div>
-    <div class="transport-grid" aria-label="再生操作">
-      <button type="button" class="transport-btn primary" id="pause-resume" disabled>⏸ 一時停止</button>
-      <button type="button" class="transport-btn" id="replay-question" disabled>↻ もう一度聞く</button>
-      <button type="button" class="transport-btn" id="previous-question" disabled>◀ 前の問題</button>
-      <button type="button" class="transport-btn" id="next-question" disabled>次の問題 ▶</button>
-    </div>
-    <p class="transport-hint">一時停止は発話途中・繰り返し途中・待ち時間を保持します。「もう一度聞く」と前後移動だけ、問題の先頭から再生します。</p>
-    <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">Safariで音声を出すため、最初は再生ボタンをタップしてください。</p>
+    </details>
   </section>
 
   <footer class="footer">
@@ -401,6 +460,8 @@
     previewJapanese: $('preview-japanese'), reloadJapaneseVoices: $('reload-japanese-voices'),
     reloadVoices: $('reload-voices'), hideText: $('hide-text'),
     start: $('start'), stop: $('stop'), notice: $('notice'),
+    repeatToggle: $('repeat-toggle'), repeatControls: $('repeat-controls'),
+    settingsBrief: $('settings-brief'), pauseSymbol: $('pause-symbol'), pauseCaption: $('pause-caption'),
     repeatMode: $('repeat-mode'), repeatSentence: $('repeat-sentence'),
     repeatSentenceBox: $('repeat-sentence-box'), repeatSegment: $('repeat-segment'),
     repeatSegmentBox: $('repeat-segment-box'), repeatInfo: $('repeat-info'),
@@ -465,6 +526,7 @@
     ui.librarySelect.value = '';
     updateFormatUI();
     updateValidation();
+    updateSettingsSummary();
     save();
     libraryMessage('入力形式を変更しました。元の形式の下書きも保存されています。');
   }
@@ -614,6 +676,9 @@
         : repeatMode === 'segment'
           ? '入力した英語の部分だけを、設定した間隔をあけて繰り返します。'
           : '最後まで再生すると終了します。';
+    ui.repeatToggle.classList.toggle('active', repeatMode !== 'off');
+    ui.repeatToggle.setAttribute('aria-label', repeatMode === 'off' ? 'リピートの設定を開く'
+      : 'リピート設定を変更（' + ({all:'全体',sentence:'1文',segment:'一部分'}[repeatMode]) + '）');
     ui.repeatMode.disabled = isPlaying;
     ui.repeatSentence.disabled = isPlaying || repeatMode !== 'sentence';
     ui.repeatSegment.disabled = isPlaying || repeatMode !== 'segment';
@@ -951,6 +1016,7 @@
       setProgress(0);
     }
     updateLibraryButtons();
+    updateSettingsSummary();
     renderReviewList(items);
     updateRepeatUI(items);
     updateValidationButtonsOnly();
@@ -1053,7 +1119,10 @@
     ui.replayQuestion.disabled = !hasSession;
     ui.previousQuestion.disabled = !hasSession || playbackSession.index <= 0;
     ui.nextQuestion.disabled = !hasSession || playbackSession.index >= playbackSession.items.length - 1;
-    ui.pauseResume.textContent = isPaused ? '▶ 再開' : '⏸ 一時停止';
+    ui.pauseSymbol.textContent = isPaused ? '▶' : '⏸';
+    ui.pauseCaption.textContent = isPaused ? '再開' : '一時停止';
+    ui.pauseResume.setAttribute('aria-label', isPaused ? '続きを再開' : '一時停止');
+    ui.pauseResume.setAttribute('title', isPaused ? '再開' : '一時停止');
   }
 
   function interruptCurrentAudio() {
@@ -1158,6 +1227,11 @@
     if (!value) { updateModeInfo(); updateValidationButtonsOnly(); }
     updateLibraryButtons();
     updateTransportButtons();
+  }
+
+  function updateSettingsSummary() {
+    const modeLabel = inputMode === 'english' ? '英語のみ' : (ui.mode.value === 'study' ? '学習' : 'テスト');
+    ui.settingsBrief.textContent = `${modeLabel} · ${ui.rate.value}× · ${ui.repeats.value}回 · ${ui.gap.value}秒`;
   }
 
   function updateValidationButtonsOnly() {
@@ -1525,6 +1599,10 @@
   updateFormatUI();
   updateValidation();
 
+  ui.repeatToggle.addEventListener('click', () => {
+    ui.repeatControls.hidden = !ui.repeatControls.hidden;
+    ui.repeatToggle.setAttribute('aria-expanded', String(!ui.repeatControls.hidden));
+  });
   ui.repeatMode.addEventListener('change', () => setRepeatMode(ui.repeatMode.value));
   ui.repeatSentence.addEventListener('change', () => {
     if (isPlaying) return;
@@ -1563,10 +1641,10 @@
     ui.libraryName.focus();
   });
   for (const element of [ui.rate, ui.repeats, ui.gap, ui.hideText]) {
-    element.addEventListener('change', save);
+    element.addEventListener('change', () => { updateSettingsSummary(); save(); });
   }
-  ui.mode.addEventListener('change', () => { updateModeInfo(); save(); });
-  ui.answerTiming.addEventListener('change', () => { updateModeInfo(); save(); });
+  ui.mode.addEventListener('change', () => { updateModeInfo(); updateSettingsSummary(); save(); });
+  ui.answerTiming.addEventListener('change', () => { updateModeInfo(); updateSettingsSummary(); save(); });
   ui.voice.addEventListener('change', () => { selectedVoice = ui.voice.value; save(); });
   ui.japaneseVoice.addEventListener('change', () => { selectedJapaneseVoice = ui.japaneseVoice.value; save(); });
   ui.reloadVoices.addEventListener('click', refreshVoices);
