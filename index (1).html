@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#10141e" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="English Coach">
+  <title>My English Coach</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #f5f7fb;
+      --surface: #fff;
+      --surface-alt: #f1f4fa;
+      --text: #162032;
+      --sub: #5d6a80;
+      --line: #e1e6ef;
+      --primary: #315cdb;
+      --primary-text: #fff;
+      --accent: #e8eeff;
+      --error: #a92737;
+      --error-bg: #fff0f1;
+      --success: #177e60;
+      --shadow: 0 10px 30px rgba(21, 37, 65, .045);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #10141e;
+        --surface: #1b2230;
+        --surface-alt: #242e3e;
+        --text: #f5f6fa;
+        --sub: #aab6ca;
+        --line: #344053;
+        --primary: #83a5ff;
+        --primary-text: #09152d;
+        --accent: #253656;
+        --error: #ff9aab;
+        --error-bg: #442934;
+        --success: #7bd7b6;
+        --shadow: none;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+      line-height: 1.5;
+      padding: max(22px, env(safe-area-inset-top)) 16px max(34px, env(safe-area-inset-bottom));
+    }
+    main { max-width: 610px; margin: 0 auto; }
+    .head { padding: 10px 4px 21px; }
+    .eyebrow { display: flex; align-items: center; gap: 9px; color: var(--primary); font-size: 12px; font-weight: 750; letter-spacing: .08em; }
+    .eyebrow-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 5px var(--accent); }
+    h1 { font-size: clamp(28px, 7vw, 36px); margin: 8px 0 4px; line-height: 1.18; letter-spacing: -.035em; }
+    .head p { margin: 0; color: var(--sub); font-size: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 19px 18px; margin: 0 0 15px; box-shadow: var(--shadow); }
+    .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 13px; }
+    .section-title { font-size: 17px; letter-spacing: -.02em; font-weight: 760; margin: 0; }
+    .caption, .tiny { font-size: 12px; color: var(--sub); }
+    .count { background: var(--accent); color: var(--primary); border-radius: 99px; font-size: 12px; font-weight: 750; padding: 5px 11px; white-space: nowrap; }
+    textarea { width: 100%; min-height: 174px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-alt); color: var(--text); padding: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; line-height: 1.65; resize: vertical; outline: none; }
+    textarea:focus, select:focus, input:focus-visible, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 38%, transparent); outline-offset: 2px; }
+    textarea:disabled { opacity: .72; }
+    .hint { margin: 8px 0 0; color: var(--sub); font-size: 12px; }
+    .validation { font-size: 13px; margin-top: 10px; white-space: pre-line; }
+    .validation.error { color: var(--error); background: var(--error-bg); border-radius: 10px; padding: 10px; }
+    .validation.good { color: var(--success); }
+    .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .field { min-width: 0; }
+    .field label { display: block; margin: 0 0 6px; font-size: 13px; font-weight: 690; }
+    .field small { display: block; margin-top: 3px; color: var(--sub); font-size: 11px; }
+    select { width: 100%; min-height: 45px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-alt); color: var(--text); padding: 0 10px; font: inherit; font-size: 15px; }
+    .full { grid-column: 1 / -1; }
+    .inline-control { display: flex; gap: 8px; align-items: center; }
+    .inline-control select { flex: 1; min-width: 0; }
+    .mini-btn { flex: none; background: var(--surface-alt); border: 1px solid var(--line); color: var(--text); padding: 0 11px; height: 45px; border-radius: 12px; font-size: 13px; font-weight: 650; }
+    .preview-btn { display: block; width: 100%; margin-top: 9px; min-height: 46px; background: var(--accent); border: 1px solid var(--line); color: var(--primary); border-radius: 12px; font-size: 14px; font-weight: 750; }
+    .voice-details { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--sub); font-size: 12px; }
+    .voice-details summary { cursor: pointer; font-weight: 700; color: var(--text); }
+    .voice-list { margin: 9px 0 0; white-space: pre-line; overflow-wrap: anywhere; max-height: 190px; overflow: auto; }
+    .voice-info-note { margin: 7px 0 0; line-height: 1.55; }
+    .check-row { display: flex; align-items: center; gap: 11px; background: var(--surface-alt); border-radius: 12px; padding: 12px; cursor: pointer; font-size: 14px; font-weight: 650; }
+    .check-row input { accent-color: var(--primary); width: 20px; height: 20px; margin: 0; flex: none; }
+    .listening-private #material-card { display: none; }
+    .player { border: 1px solid var(--line); border-radius: 20px; padding: 21px 18px 19px; background: var(--surface); box-shadow: var(--shadow); }
+    .player-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .player-title { font-size: 13px; color: var(--sub); font-weight: 700; }
+    .question-no { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .progress-track { margin-top: 12px; height: 7px; border-radius: 20px; background: var(--surface-alt); overflow: hidden; }
+    .progress-fill { width: 0%; height: 100%; background: var(--primary); border-radius: inherit; transition: width .2s ease; }
+    .now-playing { text-align: center; padding: 25px 5px 20px; min-height: 145px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .playing-big { font-size: clamp(18px, 5vw, 23px); font-weight: 750; overflow-wrap: anywhere; line-height: 1.45; margin: 0; }
+    .playing-sub { font-size: 13px; color: var(--sub); margin: 8px 0 0; }
+    .buttons { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; }
+    button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; cursor: pointer; font-family: inherit; }
+    .main-btn, .stop-btn { min-height: 57px; border: 0; border-radius: 14px; font-size: 17px; font-weight: 760; }
+    .main-btn { background: var(--primary); color: var(--primary-text); }
+    .stop-btn { background: var(--surface-alt); border: 1px solid var(--line); color: var(--text); }
+    button:disabled { opacity: .42; cursor: default; }
+    .notice { margin: 13px 3px 0; color: var(--sub); font-size: 12px; }
+    .notice[data-type="error"] { color: var(--error); }
+    .footer { text-align: center; margin-top: 17px; color: var(--sub); font-size: 12px; line-height: 1.7; }
+    @media (max-width: 350px) { .card { padding: 16px 13px; } .settings { gap: 11px; } .buttons { grid-template-columns: 1.4fr 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .progress-fill { transition: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.2</span></div>
+    <h1>My English Coach</h1>
+    <p>短い英文から、耳で英語に慣れていこう。</p>
+  </header>
+
+  <section class="card" id="material-card" aria-labelledby="material-title">
+    <div class="section-head">
+      <h2 class="section-title" id="material-title">01　英文を貼り付ける</h2>
+      <span class="count" id="question-count">3問</span>
+    </div>
+    <label for="materials" class="caption">1行につき「英文 | 日本語訳」を1セット</label>
+    <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="format-hint validation"></textarea>
+    <p class="hint" id="format-hint">例：The train is late. | 電車が遅れています。<br>空行は無視します。日本語訳は今回まだ読み上げません。</p>
+    <div id="validation" class="validation good" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card" aria-labelledby="settings-title">
+    <div class="section-head">
+      <h2 class="section-title" id="settings-title">02　読み上げ設定</h2>
+      <span class="tiny">変更は自動保存</span>
+    </div>
+    <div class="settings">
+      <div class="field">
+        <label for="rate">英語の速度</label>
+        <select id="rate">
+          <option value="0.65">0.65×（かなりゆっくり）</option>
+          <option value="0.75">0.75×（ゆっくり）</option>
+          <option value="0.85">0.85×（おすすめ）</option>
+          <option value="0.95">0.95×（少しゆっくり）</option>
+          <option value="1">1.00×（標準）</option>
+          <option value="1.1">1.10×（速め）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="repeats">1文の読み上げ</label>
+        <select id="repeats">
+          <option value="1">1回</option>
+          <option value="2">2回</option>
+          <option value="3">3回</option>
+          <option value="4">4回</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="gap">読み上げの間隔</label>
+        <select id="gap">
+          <option value="0">0秒</option>
+          <option value="2">2秒</option>
+          <option value="3">3秒</option>
+          <option value="5">5秒</option>
+          <option value="7">7秒</option>
+          <option value="10">10秒</option>
+        </select>
+        <small>繰り返し時も、次の問題へ進む時も同じ間隔</small>
+      </div>
+      <div class="field">
+        <label for="voice">英語音声</label>
+        <div class="inline-control">
+          <select id="voice"><option value="auto">自動（米国英語）</option></select>
+          <button type="button" id="reload-voices" class="mini-btn" aria-label="音声一覧を更新">更新</button>
+        </div>
+        <small id="voice-info">iPhoneの声を確認中…</small>
+        <button type="button" id="preview-voice" class="preview-btn">▶ この声を試聴（標準速度）</button>
+        <details class="voice-details" id="voice-details">
+          <summary>Safariから利用できる英語音声を確認</summary>
+          <div id="voice-list" class="voice-list">読み込み中…</div>
+          <p class="voice-info-note">この一覧に表示されない声は、現在のSafariでは指定できません。試聴は「The train is late. I like this music.」を標準速度で読み上げます。</p>
+        </details>
+      </div>
+      <div class="full">
+        <label class="check-row" for="hide-text"><input id="hide-text" type="checkbox"> <span>再生中は英文を隠す（リスニングテスト用）</span></label>
+      </div>
+    </div>
+  </section>
+
+  <section class="player" aria-labelledby="player-title">
+    <div class="player-top">
+      <span id="player-title" class="player-title">03　リスニングプレイヤー</span>
+      <span id="position" class="question-no">0 / 3 問</span>
+    </div>
+    <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress" ><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="now-playing">
+      <p id="display-text" class="playing-big">準備完了！</p>
+      <p id="display-sub" class="playing-sub">「最初から再生」を押してスタート</p>
+    </div>
+    <div class="buttons">
+      <button type="button" class="main-btn" id="start">▶ 最初から再生</button>
+      <button type="button" class="stop-btn" id="stop" disabled>■ 停止</button>
+    </div>
+    <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">Safariで音声を出すため、最初は再生ボタンをタップしてください。</p>
+  </section>
+
+  <footer class="footer">
+    教材と設定は、このブラウザ内に一時保存されます。<br>
+    ※まだ教材の個別保存・日本語音声・復習モードには対応していません。<br>
+    ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
+  </footer>
+</main>
+<script>
+(() => {
+  'use strict';
+
+  // 前版と同じキーを使用して、保存した教材と設定を引き継ぐ。
+  const STORAGE_KEY = 'my-english-coach-prototype-v01';
+  const EXAMPLE = [
+    'The train is late. | 電車が遅れています。',
+    'I like this music. | 私はこの音楽が好きです。',
+    'My dog is sleeping. | 私の犬は眠っています。'
+  ].join('\n');
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', hideText: true };
+  const $ = (id) => document.getElementById(id);
+  const ui = {
+    materials: $('materials'), validation: $('validation'), count: $('question-count'),
+    rate: $('rate'), repeats: $('repeats'), gap: $('gap'), voice: $('voice'),
+    voiceInfo: $('voice-info'), voiceList: $('voice-list'), previewVoice: $('preview-voice'),
+    reloadVoices: $('reload-voices'), hideText: $('hide-text'),
+    start: $('start'), stop: $('stop'), notice: $('notice'),
+    position: $('position'), progress: $('progress'), progressFill: $('progress-fill'),
+    displayText: $('display-text'), displaySub: $('display-sub')
+  };
+  const hasSpeech = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+  const synth = hasSpeech ? window.speechSynthesis : null;
+
+  let isPlaying = false;
+  let runId = 0; // 停止するたびに番号を変更し、古い処理が続かないようにする
+  let abortSpeech = null;
+  let abortDelay = null;
+  let currentUtterance = null; // Safariで音声オブジェクトが消えないよう保持
+  let voices = [];
+  let selectedVoice = 'auto';
+  let isPreviewing = false;
+
+  function getSaved() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return stored && typeof stored === 'object' ? { ...DEFAULTS, ...stored } : { ...DEFAULTS };
+    } catch (_) {
+      return { ...DEFAULTS };
+    }
+  }
+
+  function save() {
+    const data = {
+      text: ui.materials.value, rate: ui.rate.value, repeats: ui.repeats.value,
+      gap: ui.gap.value, voice: selectedVoice, hideText: ui.hideText.checked
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+    catch (_) { /* プライベートモードや空き容量不足時も再生は利用可能 */ }
+  }
+
+  function parseMaterials(raw) {
+    const lines = raw.split(/\r?\n/);
+    const items = [];
+    const errors = [];
+    lines.forEach((line, index) => {
+      const value = line.trim();
+      if (!value) return;
+      const separator = value.indexOf('|');
+      if (separator === -1 || separator !== value.lastIndexOf('|')) {
+        errors.push(`${index + 1}行目：「英文 | 日本語訳」の形式にしてください。`);
+        return;
+      }
+      const english = value.slice(0, separator).trim();
+      const japanese = value.slice(separator + 1).trim();
+      if (!english || !japanese) {
+        errors.push(`${index + 1}行目：英文と日本語訳の両方が必要です。`);
+        return;
+      }
+      items.push({ english, japanese });
+    });
+    return { items, errors };
+  }
+
+  function setNotice(text, type = 'normal') {
+    ui.notice.textContent = text;
+    ui.notice.dataset.type = type;
+  }
+
+  function setProgress(fraction) {
+    const percent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
+    ui.progressFill.style.width = `${percent}%`;
+    ui.progress.setAttribute('aria-valuenow', String(percent));
+  }
+
+  function updateValidation() {
+    const { items, errors } = parseMaterials(ui.materials.value);
+    ui.count.textContent = `${items.length}問`;
+    ui.validation.className = `validation ${errors.length ? 'error' : 'good'}`;
+    if (errors.length) {
+      ui.validation.textContent = errors.slice(0, 4).join('\n') +
+        (errors.length > 4 ? `\nほか ${errors.length - 4} 件のエラー` : '');
+    } else if (items.length === 0) {
+      ui.validation.textContent = '英文と日本語訳を貼り付けてください。';
+    } else {
+      ui.validation.textContent = `${items.length}問を認識しました。再生できます。`;
+    }
+    if (!isPlaying) {
+      ui.start.disabled = !hasSpeech || Boolean(errors.length) || items.length === 0;
+      ui.position.textContent = `0 / ${items.length} 問`;
+      ui.displayText.textContent = '準備完了！';
+      ui.displaySub.textContent = '「最初から再生」を押してスタート';
+      setProgress(0);
+    }
+    return { items, errors };
+  }
+
+  function voiceId(voice) { return `${voice.lang}::${voice.name}::${voice.voiceURI}`; }
+
+  function refreshVoices() {
+    if (!synth) return;
+    voices = synth.getVoices()
+      .filter((voice) => /^en([_-]|$)/i.test(voice.lang))
+      .sort((a, b) => {
+        const aUS = /^en[-_]US$/i.test(a.lang) ? 0 : 1;
+        const bUS = /^en[-_]US$/i.test(b.lang) ? 0 : 1;
+        return aUS - bUS || a.name.localeCompare(b.name);
+      });
+
+    ui.voice.replaceChildren();
+    const automatic = document.createElement('option');
+    automatic.value = 'auto';
+    automatic.textContent = '自動（米国英語）';
+    ui.voice.append(automatic);
+
+    for (const voice of voices) {
+      const option = document.createElement('option');
+      option.value = voiceId(voice);
+      option.textContent = `${voice.name}（${voice.lang}）`;
+      ui.voice.append(option);
+    }
+    if ([...ui.voice.options].some((option) => option.value === selectedVoice)) {
+      ui.voice.value = selectedVoice;
+    } else {
+      selectedVoice = 'auto';
+      ui.voice.value = 'auto';
+    }
+    const usVoices = voices.filter((voice) => /^en[-_]US$/i.test(voice.lang));
+    ui.voiceInfo.textContent = voices.length
+      ? `英語音声：${voices.length}種類（米国英語：${usVoices.length}種類）`
+      : '音声一覧が空の場合も「自動」で読み上げを試せます。';
+    ui.voiceList.textContent = voices.length
+      ? voices.map((voice, i) => `${i + 1}. ${voice.name}（${voice.lang}）`).join('\n')
+      : 'Safariから英語音声の一覧を取得できませんでした。「更新」を押してもう一度お試しください。';
+  }
+
+  function getVoice() {
+    // 重要: 「自動」のときは声を明示せず、OSにen-US向けの標準音声を選ばせる。
+    // v0.1では先頭のen-US音声を強制指定してしまい、声質を悪化させる可能性があった。
+    if (selectedVoice === 'auto') return null;
+    return voices.find((voice) => voiceId(voice) === selectedVoice) || null;
+  }
+
+  function setPlaying(value) {
+    isPlaying = value;
+    document.body.classList.toggle('listening-private', value && ui.hideText.checked);
+    ui.start.disabled = value;
+    ui.stop.disabled = !value;
+    ui.previewVoice.disabled = value && !isPreviewing;
+    ui.previewVoice.textContent = isPreviewing ? '■ 試聴を停止' : '▶ この声を試聴（標準速度）';
+    for (const element of [ui.materials, ui.rate, ui.repeats, ui.gap, ui.voice, ui.reloadVoices, ui.hideText]) {
+      element.disabled = value;
+    }
+    if (!value) updateValidationButtonsOnly();
+  }
+
+  function updateValidationButtonsOnly() {
+    const { items, errors } = parseMaterials(ui.materials.value);
+    ui.start.disabled = !hasSpeech || items.length === 0 || errors.length > 0;
+  }
+
+  function sleep(ms, token, text) {
+    if (ms <= 0) return Promise.resolve(token === runId);
+    return new Promise((resolve) => {
+      if (token !== runId) { resolve(false); return; }
+      let finished = false;
+      let clockId;
+      let timerId;
+      const startedAt = Date.now();
+      const finish = (ok) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timerId);
+        clearInterval(clockId);
+        if (abortDelay === abort) abortDelay = null;
+        resolve(ok);
+      };
+      const abort = () => finish(false);
+      abortDelay = abort;
+      const renderCountdown = () => {
+        if (token !== runId) return;
+        const remaining = Math.max(1, Math.ceil((ms - (Date.now() - startedAt)) / 1000));
+        ui.displaySub.textContent = `${text}：あと ${remaining} 秒`;
+      };
+      renderCountdown();
+      clockId = setInterval(renderCountdown, 500);
+      timerId = setTimeout(() => finish(token === runId), ms);
+    });
+  }
+
+  function speakEnglish(english, rate, voice, token) {
+    return new Promise((resolve) => {
+      if (token !== runId) { resolve({ ok: false, message: 'stopped' }); return; }
+      let finished = false;
+      let watchdogId;
+      const utterance = new SpeechSynthesisUtterance(english);
+      utterance.lang = 'en-US';
+      utterance.rate = rate;
+      utterance.volume = 1;
+      if (voice) { utterance.voice = voice; utterance.lang = voice.lang; }
+      currentUtterance = utterance;
+
+      const finish = (ok, message = '') => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(watchdogId);
+        utterance.onend = null;
+        utterance.onerror = null;
+        if (abortSpeech === abort) abortSpeech = null;
+        if (currentUtterance === utterance) currentUtterance = null;
+        resolve({ ok, message });
+      };
+      const abort = () => finish(false, 'stopped');
+      abortSpeech = abort;
+      utterance.onend = () => finish(true);
+      utterance.onerror = (event) => finish(false, `音声エラー：${event.error || 'unknown'}`);
+
+      // Safariで終了通知が届かない場合、無限に待ち続けずエラーを表示する。
+      // 長文・ゆっくり読み上げにもある程度余裕を持たせる。
+      const watchdogMs = Math.max(18000, Math.min(240000, english.length * 380 / rate + 12000));
+      watchdogId = setTimeout(() => {
+        finish(false, '音声の終了通知を受け取れませんでした。再生ボタンからやり直してください。');
+        try { synth.cancel(); } catch (_) {}
+      }, watchdogMs);
+
+      try { synth.speak(utterance); }
+      catch (error) { finish(false, `読み上げを開始できません：${error.message || error}`); }
+    });
+  }
+
+  function stopPlayback(reason = '停止しました。もう一度押すと先頭から再生します。') {
+    if (!isPlaying) return;
+    ++runId;
+    if (abortSpeech) abortSpeech();
+    if (abortDelay) abortDelay();
+    try { synth.cancel(); } catch (_) {}
+    isPreviewing = false;
+    setPlaying(false);
+    ui.displayText.textContent = '停止しました';
+    ui.displaySub.textContent = '再生ボタンで最初の問題からやり直せます';
+    setNotice(reason);
+  }
+
+  async function playback(token, items, settings) {
+    const total = items.length * settings.repeats;
+    let finished = 0;
+    try {
+      for (let index = 0; index < items.length; index++) {
+        for (let repeat = 0; repeat < settings.repeats; repeat++) {
+          if (token !== runId) return;
+          ui.position.textContent = `${index + 1} / ${items.length} 問`;
+          ui.displayText.textContent = settings.hideText ? '耳で聞いて、意味を考えよう' : items[index].english;
+          ui.displaySub.textContent = `英語を読み上げ中 · ${repeat + 1} / ${settings.repeats} 回目`;
+          const result = await speakEnglish(items[index].english, settings.rate, settings.voice, token);
+          if (token !== runId) return;
+          if (!result.ok) throw new Error(result.message || '音声を再生できませんでした。');
+          finished++;
+          setProgress(finished / total);
+
+          const hasNext = index < items.length - 1 || repeat < settings.repeats - 1;
+          if (hasNext && settings.gap > 0) {
+            const waitLabel = repeat < settings.repeats - 1 ? '考える時間' : '次の問題まで';
+            if (!(await sleep(settings.gap * 1000, token, waitLabel))) return;
+          }
+        }
+      }
+      if (token !== runId) return;
+      setPlaying(false);
+      ui.displayText.textContent = '学習完了！ 🎉';
+      ui.displaySub.textContent = `${items.length}問 × ${settings.repeats}回の読み上げが終了しました`;
+      setNotice('おつかれさま！ 再生ボタンで最初からもう一度聴けます。');
+    } catch (error) {
+      if (token !== runId) return;
+      ++runId;
+      if (abortSpeech) abortSpeech();
+      if (abortDelay) abortDelay();
+      try { synth.cancel(); } catch (_) {}
+      setPlaying(false);
+      ui.displayText.textContent = '再生を中断しました';
+      ui.displaySub.textContent = '音声設定を確認し、再生し直してください';
+      setNotice(error.message || '予期しない音声エラーが発生しました。', 'error');
+    }
+  }
+
+  function startVoicePreview() {
+    if (isPreviewing) {
+      stopPlayback('声の試聴を停止しました。');
+      return;
+    }
+    if (isPlaying || !hasSpeech) return;
+    refreshVoices();
+    const voice = getVoice();
+    const token = ++runId;
+    isPreviewing = true;
+    setPlaying(true);
+    ui.displayText.textContent = '英語音声を試聴中';
+    ui.displaySub.textContent = '標準速度（1.00倍）で比較できます';
+    const label = selectedVoice === 'auto' ? '自動（iPhoneの標準音声）' : voice ? voice.name : '指定した声';
+    setNotice(`試聴：${label}。違いが分かるよう標準速度で再生します。`);
+    if (synth.paused) {
+      try { synth.resume(); } catch (_) {}
+    }
+    if (synth.speaking || synth.pending) {
+      try { synth.cancel(); } catch (_) {}
+    }
+    // タップの処理から同期的にspeechSynthesis.speak()を呼ぶ。
+    void (async () => {
+      try {
+        const result = await speakEnglish('The train is late. I like this music.', 1.0, voice, token);
+        if (token !== runId) return;
+        if (!result.ok) throw new Error(result.message || '試聴に失敗しました。');
+        isPreviewing = false;
+        setPlaying(false);
+        ui.displayText.textContent = '試聴が終わりました';
+        ui.displaySub.textContent = '別の英語音声を選んで聴き比べられます';
+        setNotice(`「${label}」の試聴が完了しました。`);
+      } catch (error) {
+        if (token !== runId) return;
+        ++runId;
+        if (abortSpeech) abortSpeech();
+        try { synth.cancel(); } catch (_) {}
+        isPreviewing = false;
+        setPlaying(false);
+        ui.displayText.textContent = '試聴できませんでした';
+        setNotice(error.message || '音声エラーが発生しました。', 'error');
+      }
+    })();
+  }
+
+  function startPlayback() {
+    if (isPlaying) return;
+    const { items, errors } = updateValidation();
+    if (!hasSpeech) { setNotice('このブラウザは音声読み上げに対応していません。Safariで開いてください。', 'error'); return; }
+    if (errors.length || items.length === 0) { setNotice('教材の入力エラーを先に修正してください。', 'error'); return; }
+    // 同期的に、タップした処理の中から最初のspeak()を実行する。
+    // iPhoneで必要になるユーザー操作を保つため、開始前にはawaitを入れない。
+    refreshVoices();
+    const settings = {
+      rate: Number(ui.rate.value), repeats: Number(ui.repeats.value),
+      gap: Number(ui.gap.value), hideText: ui.hideText.checked, voice: getVoice()
+    };
+    if (synth.paused) {
+      try { synth.resume(); } catch (_) {}
+    }
+    // 古い音声キューが本当に残っている場合のみ解消する。
+    if (synth.speaking || synth.pending) {
+      try { synth.cancel(); } catch (_) {}
+    }
+    const token = ++runId;
+    setPlaying(true);
+    setProgress(0);
+    setNotice('再生中です。端末の音量とイヤホンの接続を確認してください。');
+    void playback(token, items, settings);
+  }
+
+  const stored = getSaved();
+  ui.materials.value = typeof stored.text === 'string' ? stored.text : EXAMPLE;
+  for (const [key, fallback] of [['rate', '0.85'], ['repeats', '2'], ['gap', '5']]) {
+    const wanted = String(stored[key]);
+    ui[key].value = [...ui[key].options].some((option) => option.value === wanted) ? wanted : fallback;
+  }
+  ui.hideText.checked = Boolean(stored.hideText);
+  selectedVoice = typeof stored.voice === 'string' ? stored.voice : 'auto';
+  updateValidation();
+
+  ui.materials.addEventListener('input', () => { updateValidation(); save(); });
+  for (const element of [ui.rate, ui.repeats, ui.gap, ui.hideText]) {
+    element.addEventListener('change', save);
+  }
+  ui.voice.addEventListener('change', () => { selectedVoice = ui.voice.value; save(); });
+  ui.reloadVoices.addEventListener('click', refreshVoices);
+  ui.previewVoice.addEventListener('click', startVoicePreview);
+  ui.start.addEventListener('click', startPlayback);
+  ui.stop.addEventListener('click', () => stopPlayback());
+  if (synth) {
+    refreshVoices();
+    synth.addEventListener('voiceschanged', refreshVoices);
+  } else {
+    ui.voiceInfo.textContent = 'このブラウザでは音声が利用できません。';
+    setNotice('音声合成に非対応です。iPhoneのSafariでアクセスしてください。', 'error');
+  }
+
+  // バックグラウンドではSafariのタイマーや音声が停止することがあるため、
+  // 再生が進んだように見える不整合を防ぐ目的で明示的に停止する。
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isPlaying) stopPlayback('画面が非表示になったため停止しました。Safariに戻って再生してください。');
+  });
+  window.addEventListener('pagehide', () => {
+    if (isPlaying) stopPlayback('ページが閉じられたため停止しました。');
+  });
+})();
+</script>
+</body>
+</html>
