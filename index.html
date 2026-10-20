@@ -82,6 +82,15 @@
     .mini-btn { flex: none; background: var(--surface-alt); border: 1px solid var(--line); color: var(--text); padding: 0 11px; height: 45px; border-radius: 12px; font-size: 13px; font-weight: 650; }
     .preview-btn { display: block; width: 100%; margin-top: 9px; min-height: 46px; background: var(--accent); border: 1px solid var(--line); color: var(--primary); border-radius: 12px; font-size: 14px; font-weight: 750; }
     .mode-help { display: block; margin-top: 7px; color: var(--sub); font-size: 12px; line-height: 1.6; }
+    .library-input { width: 100%; min-height: 45px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-alt); color: var(--text); padding: 0 12px; font: inherit; font-size: 15px; }
+    .library-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 9px; }
+    .library-btn { min-height: 46px; border-radius: 12px; font-size: 14px; font-weight: 730; border: 1px solid var(--line); background: var(--surface-alt); color: var(--text); }
+    .library-primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+    .library-danger { color: var(--error); }
+    .library-field { margin-top: 10px; }
+    .library-field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .library-status { font-size: 12px; color: var(--sub); line-height: 1.6; margin: 11px 0 0; min-height: 20px; white-space: pre-line; }
+    .library-status[data-type="error"] { color: var(--error); }
     .voice-details { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--sub); font-size: 12px; }
     .voice-details summary { cursor: pointer; font-weight: 700; color: var(--text); }
     .voice-list { margin: 9px 0 0; white-space: pre-line; overflow-wrap: anywhere; max-height: 190px; overflow: auto; }
@@ -114,7 +123,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.5</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.6</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -130,9 +139,34 @@
     <div id="validation" class="validation good" role="status" aria-live="polite"></div>
   </section>
 
+  <section class="card" id="library-card" aria-labelledby="library-title">
+    <div class="section-head">
+      <h2 class="section-title" id="library-title">02　教材ライブラリ</h2>
+      <span id="library-count" class="count">保存済み 0件</span>
+    </div>
+    <div class="library-field">
+      <label for="library-name">教材のタイトル</label>
+      <input class="library-input" id="library-name" type="text" maxlength="60" placeholder="例：通勤英語 10月20日" autocomplete="off">
+    </div>
+    <div class="library-row">
+      <button type="button" class="library-btn library-primary" id="library-save">この教材を保存</button>
+      <button type="button" class="library-btn" id="library-clear-name">別名で保存する</button>
+    </div>
+    <div class="library-field">
+      <label for="library-select">保存した教材</label>
+      <select id="library-select"><option value="">保存した教材を選択</option></select>
+    </div>
+    <div class="library-row">
+      <button type="button" class="library-btn" id="library-load">教材を呼び出す</button>
+      <button type="button" class="library-btn library-danger" id="library-delete">教材を削除</button>
+    </div>
+    <p id="library-status" class="library-status" role="status" aria-live="polite">現在の教材をタイトル付きで保存できます。</p>
+    <p class="hint">同じタイトルで保存すると、確認後に上書きします。保存はこのiPhoneのブラウザ内だけです。</p>
+  </section>
+
   <section class="card" aria-labelledby="settings-title">
     <div class="section-head">
-      <h2 class="section-title" id="settings-title">02　読み上げ設定</h2>
+      <h2 class="section-title" id="settings-title">03　読み上げ設定</h2>
       <span class="tiny">変更は自動保存</span>
     </div>
     <div class="settings">
@@ -216,7 +250,7 @@
 
   <section class="player" aria-labelledby="player-title">
     <div class="player-top">
-      <span id="player-title" class="player-title">03　リスニングプレイヤー</span>
+      <span id="player-title" class="player-title">04　リスニングプレイヤー</span>
       <span id="position" class="question-no">0 / 3 問</span>
     </div>
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress" ><div class="progress-fill" id="progress-fill"></div></div>
@@ -233,7 +267,7 @@
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
-    ※教材の個別保存・復習モードは今後実装します。<br>
+    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習モード・バックアップ機能は今後実装予定です。<br>
     ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
@@ -243,15 +277,19 @@
 
   // 前版と同じキーを使用して、保存した教材と設定を引き継ぐ。
   const STORAGE_KEY = 'my-english-coach-prototype-v01';
+  const LIBRARY_KEY = 'my-english-coach-library-v01';
   const EXAMPLE = [
     'The train is late. | 電車が遅れています。',
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
+    libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
+    librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
+    libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
     mode: $('mode'), modeInfo: $('mode-info'), answerTiming: $('answer-timing'), answerInfo: $('answer-info'),
     rate: $('rate'), repeats: $('repeats'), gap: $('gap'), voice: $('voice'),
     voiceInfo: $('voice-info'), voiceList: $('voice-list'), previewVoice: $('preview-voice'),
@@ -276,6 +314,8 @@
   let selectedJapaneseVoice = 'auto';
   let isPreviewing = false;
   let previewKind = null;
+  let library = [];
+  let libraryStorageError = false;
 
   function getSaved() {
     try {
@@ -290,10 +330,120 @@
     const data = {
       text: ui.materials.value, rate: ui.rate.value, repeats: ui.repeats.value,
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
-      mode: ui.mode.value, answerTiming: ui.answerTiming.value, hideText: ui.hideText.checked
+      mode: ui.mode.value, answerTiming: ui.answerTiming.value,
+      libraryName: ui.libraryName.value, hideText: ui.hideText.checked
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
     catch (_) { /* プライベートモードや空き容量不足時も再生は利用可能 */ }
+  }
+
+  // 保存済み教材と編集中の教材は分離。読み込むまで編集内容を上書きしない。
+  function getLibrary() {
+    try {
+      const raw = localStorage.getItem(LIBRARY_KEY);
+      if (raw === null) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || !parsed.every((entry) =>
+        entry && typeof entry.id === 'string' && entry.id &&
+        typeof entry.title === 'string' && entry.title.trim() &&
+        typeof entry.text === 'string' && Number.isFinite(entry.updatedAt))) {
+        throw new Error('invalid library');
+      }
+      return parsed;
+    } catch (_) {
+      libraryStorageError = true;
+      return [];
+    }
+  }
+
+  function libraryMessage(message, error = false) {
+    ui.libraryStatus.textContent = message;
+    ui.libraryStatus.dataset.type = error ? 'error' : 'normal';
+  }
+
+  function updateLibraryButtons() {
+    const selected = library.some((entry) => entry.id === ui.librarySelect.value);
+    const parsed = parseMaterials(ui.materials.value);
+    ui.librarySave.disabled = isPlaying || libraryStorageError || !ui.libraryName.value.trim() ||
+      ui.libraryName.value.trim().length > 60 || parsed.items.length === 0 || parsed.errors.length > 0;
+    ui.libraryLoad.disabled = isPlaying || libraryStorageError || !selected;
+    ui.libraryDelete.disabled = isPlaying || libraryStorageError || !selected;
+    ui.librarySelect.disabled = isPlaying || libraryStorageError || library.length === 0;
+    ui.libraryName.disabled = isPlaying || libraryStorageError;
+    ui.libraryClearName.disabled = isPlaying || libraryStorageError;
+  }
+
+  function renderLibrary(selectId = '') {
+    ui.libraryCount.textContent = `保存済み ${library.length}件`;
+    ui.librarySelect.replaceChildren();
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '保存した教材を選択';
+    ui.librarySelect.append(placeholder);
+    for (const entry of library) {
+      const option = document.createElement('option');
+      option.value = entry.id;
+      option.textContent = `${entry.title}（${parseMaterials(entry.text).items.length}問）`;
+      ui.librarySelect.append(option);
+    }
+    ui.librarySelect.value = library.some(entry => entry.id === selectId) ? selectId : '';
+    updateLibraryButtons();
+  }
+
+  function writeLibrary(next) {
+    try {
+      localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+      library = next;
+      return true;
+    } catch (_) {
+      libraryMessage('保存に失敗しました。Safariの保存容量やプライベートブラウズを確認してください。', true);
+      return false;
+    }
+  }
+
+  function saveToLibrary() {
+    if (isPlaying || libraryStorageError) return;
+    const title = ui.libraryName.value.trim();
+    const { items, errors } = parseMaterials(ui.materials.value);
+    if (!title || title.length > 60) {
+      libraryMessage('教材のタイトルを1〜60文字で入力してください。', true); return;
+    }
+    if (errors.length || items.length === 0) {
+      libraryMessage('教材の入力エラーを修正してから保存してください。', true); return;
+    }
+    const existing = library.find(entry => entry.title === title);
+    if (existing && !window.confirm(`「${title}」は保存済みです。内容を上書きしますか？`)) return;
+    const now = Date.now();
+    const entry = { id: existing ? existing.id : `${now.toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+      title, text: ui.materials.value, updatedAt: now };
+    const next = (existing ? library.map(item => item.id === existing.id ? entry : item) : [...library, entry])
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    if (!writeLibrary(next)) return;
+    renderLibrary(entry.id);
+    save();
+    libraryMessage(`「${title}」を${existing ? '上書き保存' : '保存'}しました（${items.length}問）。`);
+  }
+
+  function loadFromLibrary() {
+    if (isPlaying || libraryStorageError) return;
+    const entry = library.find(item => item.id === ui.librarySelect.value);
+    if (!entry) { libraryMessage('呼び出す教材を選択してください。', true); return; }
+    if (ui.materials.value !== entry.text && !window.confirm('現在編集中の英文が置き換わります。教材を呼び出しますか？')) return;
+    ui.materials.value = entry.text;
+    ui.libraryName.value = entry.title;
+    updateValidation();
+    save();
+    libraryMessage(`「${entry.title}」を呼び出しました。`);
+  }
+
+  function deleteFromLibrary() {
+    if (isPlaying || libraryStorageError) return;
+    const entry = library.find(item => item.id === ui.librarySelect.value);
+    if (!entry) { libraryMessage('削除する教材を選択してください。', true); return; }
+    if (!window.confirm(`「${entry.title}」を削除しますか？この操作は取り消せません。`)) return;
+    if (!writeLibrary(library.filter(item => item.id !== entry.id))) return;
+    renderLibrary();
+    libraryMessage(`「${entry.title}」を削除しました。現在の編集画面には教材が残っています。`);
   }
 
   function parseMaterials(raw) {
@@ -349,6 +499,7 @@
       ui.displaySub.textContent = '「最初から再生」を押してスタート';
       setProgress(0);
     }
+    updateLibraryButtons();
     return { items, errors };
   }
 
@@ -455,6 +606,7 @@
       element.disabled = value;
     }
     if (!value) { updateModeInfo(); updateValidationButtonsOnly(); }
+    updateLibraryButtons();
   }
 
   function updateValidationButtonsOnly() {
@@ -722,6 +874,10 @@
 
   const stored = getSaved();
   ui.materials.value = typeof stored.text === 'string' ? stored.text : EXAMPLE;
+  ui.libraryName.value = typeof stored.libraryName === 'string' ? stored.libraryName.slice(0, 60) : '';
+  library = getLibrary();
+  renderLibrary();
+  if (libraryStorageError) libraryMessage('保存済みデータの読み込みに失敗しました。既存データを守るため、ライブラリの操作を停止しています。', true);
   for (const [key, fallback] of [['rate', '0.85'], ['repeats', '2'], ['gap', '5']]) {
     const wanted = String(stored[key]);
     ui[key].value = [...ui[key].options].some((option) => option.value === wanted) ? wanted : fallback;
@@ -735,6 +891,20 @@
   updateValidation();
 
   ui.materials.addEventListener('input', () => { updateValidation(); save(); });
+  ui.libraryName.addEventListener('input', () => { updateLibraryButtons(); save(); });
+  ui.librarySelect.addEventListener('change', updateLibraryButtons);
+  ui.librarySave.addEventListener('click', saveToLibrary);
+  ui.libraryLoad.addEventListener('click', loadFromLibrary);
+  ui.libraryDelete.addEventListener('click', deleteFromLibrary);
+  ui.libraryClearName.addEventListener('click', () => {
+    if (isPlaying) return;
+    ui.libraryName.value = '';
+    ui.librarySelect.value = '';
+    updateLibraryButtons();
+    save();
+    libraryMessage('タイトルを入力すると、現在の英文を新しい教材として保存できます。');
+    ui.libraryName.focus();
+  });
   for (const element of [ui.rate, ui.repeats, ui.gap, ui.hideText]) {
     element.addEventListener('change', save);
   }
