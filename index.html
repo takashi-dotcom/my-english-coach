@@ -568,7 +568,7 @@
         ? `第${index + 1}問の答えを確認しよう`
         : items[index].japanese;
       ui.displaySub.textContent = `日本語で答え合わせ · ${index + 1} / ${items.length} 問`;
-      const result = await speakJapanese(items[index].japanese, settings.japaneseVoice, token);
+      const result = await speakJapanese(`第${index + 1}問。${items[index].japanese}`, settings.japaneseVoice, token);
       if (token !== runId) return false;
       if (!result.ok) throw new Error(result.message || '日本語の答えを再生できませんでした。');
       finished++;
