@@ -223,7 +223,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.2</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.2.1</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -903,9 +903,9 @@
       for (const [rating,label] of [['learning','↻ まだ苦手'],['known','✓ 理解できた']]) {
         const button = document.createElement('button');
         button.type = 'button'; button.className = 'mastery-choice' + (status.rating === rating ? ' selected' : '');
-        button.textContent = label; button.disabled = isPlaying || progressStorageError;
+        button.textContent = label; button.disabled = progressStorageError;
         button.setAttribute('aria-pressed', String(status.rating === rating));
-        button.addEventListener('click', () => rateMastery(key, rating));
+        button.addEventListener('click', () => rateMastery(key, rating, detail, actions));
         actions.append(button);
       }
       row.append(en); row.append(detail); row.append(actions); ui.masteryList.append(row);
@@ -917,9 +917,11 @@
     }
   }
 
-  function rateMastery(key, rating) {
-    if (isPlaying || progressStorageError || !key || !['learning','known'].includes(rating)) return;
+  function rateMastery(key, rating, detail, actions) {
+    // 聞きながら理解度を判定できるよう、再生中も受け付ける。
+    if (progressStorageError || !key || !['learning','known'].includes(rating)) return;
     const previous = progressItem(key);
+    const alreadySaved = Object.prototype.hasOwnProperty.call(progressData.items, key);
     const now = Date.now();
     const sameDay = previous.lastRatedAt && localDay(previous.lastRatedAt) === localDay(now);
     const next = {
@@ -929,9 +931,26 @@
         : 0
     };
     progressData.items[key] = next;
-    saveProgress();
+    if (!saveProgress()) {
+      if (alreadySaved) progressData.items[key] = previous;
+      else delete progressData.items[key];
+      ui.masterySummary.textContent = '評価を保存できませんでした。Safariの保存容量などを確認してください。';
+      return;
+    }
+
+    // DOMを作り直さず更新することで、タップ位置・スクロール位置を保つ。
+    if (detail && actions) {
+      detail.textContent = `再生 ${next.heard}回 · ${rating === 'known' ? '理解できた' : '要復習'}`;
+      for (const button of actions.children) {
+        const selected = (rating === 'known' && button.textContent.includes('理解できた')) ||
+          (rating === 'learning' && button.textContent.includes('まだ苦手'));
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      }
+    } else {
+      renderMasteryRows();
+    }
     drawProgressOverview();
-    renderMasteryRows();
     ui.progressNotice.textContent = rating === 'known'
       ? '「理解できた」を保存しました。次回の復習にも反映します。'
       : '「まだ苦手」を保存しました。次回も確認してみよう。';
