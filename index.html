@@ -95,6 +95,17 @@
     .backup-status[data-type="error"] { color: var(--error); }
     .backup-hint { margin: 9px 0 0; color: var(--sub); font-size: 12px; line-height: 1.6; }
     .backup-file { display: none; }
+    .review-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 8px; }
+    .review-tab { background: var(--surface-alt); border: 1px solid var(--line); border-radius: 12px; min-height: 47px; color: var(--text); font-size: 14px; font-weight: 730; }
+    .review-tab.active { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+    .review-list { display: grid; gap: 7px; max-height: 310px; overflow-y: auto; margin-top: 11px; }
+    .review-item { display: flex; gap: 10px; align-items: flex-start; padding: 11px 10px; border-radius: 12px; background: var(--surface-alt); cursor: pointer; }
+    .review-item input { flex: none; width: 21px; height: 21px; margin: 1px 0 0; accent-color: var(--primary); }
+    .review-item-text { min-width: 0; flex: 1; }
+    .review-english { display: block; font-size: 14px; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
+    .review-japanese { display: block; margin-top: 3px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
+    .review-help { font-size: 12px; line-height: 1.6; color: var(--sub); margin: 5px 0; }
+    .listening-private #review-list { display: none; }
     .format-card { padding: 16px 18px; }
     .format-label { display:block; margin-bottom:10px; font-size:13px; color:var(--sub); font-weight:730; }
     .format-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; background:var(--surface-alt); border-radius:15px; border:1px solid var(--line); }
@@ -134,7 +145,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.8</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v0.9</span></div>
     <h1>My English Coach</h1>
     <p>短い英文から、耳で英語に慣れていこう。</p>
   </header>
@@ -283,9 +294,24 @@
     </div>
   </section>
 
+  <section class="card" id="review-card" aria-labelledby="review-title">
+    <div class="section-head">
+      <h2 class="section-title" id="review-title">05　苦手な英文を復習</h2>
+      <span class="count" id="review-count">苦手 0 / 0問</span>
+    </div>
+    <p class="review-help">復習したい英文にチェックを付けよう。チェックは自動保存されるぞ。</p>
+    <div class="review-switch" role="group" aria-label="再生する問題の選択">
+      <button type="button" class="review-tab active" id="review-all" aria-pressed="true">すべて再生</button>
+      <button type="button" class="review-tab" id="review-only" aria-pressed="false">苦手だけ再生</button>
+    </div>
+    <p class="review-help" id="review-help">すべての英文を順番に再生します。</p>
+    <div class="review-list" id="review-list" aria-label="復習チェック一覧"></div>
+    <p class="review-help">同じ英文は、別の教材で登場しても苦手チェックが引き継がれます。</p>
+  </section>
+
   <section class="player" aria-labelledby="player-title">
     <div class="player-top">
-      <span id="player-title" class="player-title">05　リスニングプレイヤー</span>
+      <span id="player-title" class="player-title">06　リスニングプレイヤー</span>
       <span id="position" class="question-no">0 / 3 問</span>
     </div>
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress" ><div class="progress-fill" id="progress-fill"></div></div>
@@ -302,7 +328,7 @@
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
-    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習モードは今後実装予定です。バックアップを定期的に保存してください。<br>
+    ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。復習チェックもバックアップに含まれます。バックアップを定期的に保存してください。<br>
     ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
@@ -319,7 +345,7 @@
     'I like this music. | 私はこの音楽が好きです。',
     'My dog is sleeping. | 私の犬は眠っています。'
   ].join('\n');
-  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', hideText: true };
+  const DEFAULTS = { text: EXAMPLE, rate: '0.85', repeats: '2', gap: '5', voice: 'auto', japaneseVoice: 'auto', mode: 'test', answerTiming: 'end', libraryName: '', inputMode: 'paired', reviewOnly: false, reviewKeys: [], hideText: true };
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
@@ -328,6 +354,8 @@
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
     libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
+    reviewAll: $('review-all'), reviewOnly: $('review-only'), reviewList: $('review-list'),
+    reviewCount: $('review-count'), reviewHelp: $('review-help'),
     backupExport: $('backup-export'), backupImport: $('backup-import'),
     backupFile: $('backup-file'), backupStatus: $('backup-status'),
     mode: $('mode'), modeInfo: $('mode-info'), answerTiming: $('answer-timing'), answerInfo: $('answer-info'),
@@ -357,6 +385,9 @@
   let library = [];
   let libraryStorageError = false;
 
+  let reviewOnly = false;
+  let reviewKeys = new Set();
+  let reviewInputs = [];
   let inputMode = 'paired';
   const drafts = { paired: EXAMPLE, english: '' };
 
@@ -404,7 +435,8 @@
       text: ui.materials.value, inputMode, pairedDraft: drafts.paired, englishDraft: drafts.english, rate: ui.rate.value, repeats: ui.repeats.value,
       gap: ui.gap.value, voice: selectedVoice, japaneseVoice: selectedJapaneseVoice,
       mode: ui.mode.value, answerTiming: ui.answerTiming.value,
-      libraryName: ui.libraryName.value, hideText: ui.hideText.checked
+      libraryName: ui.libraryName.value, hideText: ui.hideText.checked,
+      reviewOnly, reviewKeys: [...reviewKeys]
     };
   }
 
@@ -412,6 +444,86 @@
     const data = captureCurrentSettings();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
     catch (_) { /* プライベートモードや空き容量不足時も再生は利用可能 */ }
+  }
+
+  function reviewKey(english) {
+    return english.trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  function updateReviewIndicators(items) {
+    const marked = items.filter(item => reviewKeys.has(reviewKey(item.english))).length;
+    ui.reviewCount.textContent = `苦手 ${marked} / ${items.length}問`;
+    ui.reviewAll.classList.toggle('active', !reviewOnly);
+    ui.reviewOnly.classList.toggle('active', reviewOnly);
+    ui.reviewAll.setAttribute('aria-pressed', String(!reviewOnly));
+    ui.reviewOnly.setAttribute('aria-pressed', String(reviewOnly));
+    ui.reviewHelp.textContent = reviewOnly
+      ? (marked ? `苦手チェックを付けた${marked}問だけを、現在の読み上げ設定で再生します。`
+        : '苦手チェックがまだありません。下の英文をチェックすると再生できます。')
+      : 'すべての英文を順番に再生します。';
+    ui.reviewAll.disabled = isPlaying;
+    ui.reviewOnly.disabled = isPlaying;
+    for (const row of reviewInputs) row.input.disabled = isPlaying;
+    updateValidationButtonsOnly();
+  }
+
+  function renderReviewList(items) {
+    reviewInputs = [];
+    ui.reviewList.replaceChildren();
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'review-help';
+      empty.textContent = '教材を入力すると、ここに英文が表示されます。';
+      ui.reviewList.append(empty);
+    }
+    items.forEach((item, index) => {
+      const key = reviewKey(item.english);
+      const label = document.createElement('label');
+      label.className = 'review-item';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = reviewKeys.has(key);
+      checkbox.disabled = isPlaying;
+      checkbox.setAttribute('aria-label', `第${index + 1}問を苦手として登録`);
+      const content = document.createElement('span');
+      content.className = 'review-item-text';
+      const en = document.createElement('span');
+      en.className = 'review-english';
+      en.textContent = `${index + 1}. ${item.english}`;
+      content.append(en);
+      if (item.japanese) {
+        const ja = document.createElement('span');
+        ja.className = 'review-japanese';
+        ja.textContent = item.japanese;
+        content.append(ja);
+      }
+      label.append(checkbox);
+      label.append(content);
+      ui.reviewList.append(label);
+      reviewInputs.push({ key, input: checkbox });
+      checkbox.addEventListener('change', () => {
+        if (isPlaying) return;
+        if (checkbox.checked && (key.length > 2000 || (reviewKeys.size >= 1000 && !reviewKeys.has(key)))) {
+          checkbox.checked = false;
+          setNotice('苦手チェックの保存上限に達しました。', 'error');
+          return;
+        }
+        if (checkbox.checked) reviewKeys.add(key); else reviewKeys.delete(key);
+        for (const row of reviewInputs) {
+          if (row.key === key) row.input.checked = checkbox.checked;
+        }
+        save();
+        updateReviewIndicators(items);
+      });
+    });
+    updateReviewIndicators(items);
+  }
+
+  function toggleReviewMode(enabled) {
+    if (isPlaying) return;
+    reviewOnly = enabled;
+    updateValidation();
+    save();
   }
 
   function backupMessage(message, error = false) {
@@ -492,6 +604,10 @@
         typeof a.voice !== 'string' || a.voice.length > 300 ||
         typeof a.japaneseVoice !== 'string' || a.japaneseVoice.length > 300 ||
         typeof a.hideText !== 'boolean' ||
+        (a.reviewOnly !== undefined && typeof a.reviewOnly !== 'boolean') ||
+        (a.reviewKeys !== undefined && (
+          !Array.isArray(a.reviewKeys) || a.reviewKeys.length > 1000 ||
+          !a.reviewKeys.every(value => typeof value === 'string' && value.length > 0 && value.length <= 2000))) ||
         !['study', 'test'].includes(a.mode) ||
         !['end', 'each', 'none'].includes(a.answerTiming) ||
         ![...ui.rate.options].some(x => x.value === String(a.rate)) ||
@@ -504,7 +620,8 @@
       text: mode === 'english' ? a.englishDraft : a.pairedDraft,
       libraryName: a.libraryName, voice: a.voice, japaneseVoice: a.japaneseVoice,
       rate: String(a.rate), repeats: String(a.repeats), gap: String(a.gap),
-      hideText: a.hideText, mode: a.mode, answerTiming: a.answerTiming
+      hideText: a.hideText, mode: a.mode, answerTiming: a.answerTiming,
+      reviewOnly: a.reviewOnly === true, reviewKeys: Array.isArray(a.reviewKeys) ? [...new Set(a.reviewKeys)] : []
     };
     return { settings, library: normalized };
   }
@@ -719,13 +836,16 @@
       ui.validation.textContent = `${items.length}問を認識しました。再生できます。`;
     }
     if (!isPlaying) {
-      ui.start.disabled = !hasSpeech || Boolean(errors.length) || items.length === 0;
-      ui.position.textContent = `0 / ${items.length} 問`;
+      const playCount = reviewOnly
+        ? items.filter(item => reviewKeys.has(reviewKey(item.english))).length : items.length;
+      ui.start.disabled = !hasSpeech || Boolean(errors.length) || playCount === 0;
+      ui.position.textContent = `0 / ${playCount} 問`;
       ui.displayText.textContent = '準備完了！';
       ui.displaySub.textContent = '「最初から再生」を押してスタート';
       setProgress(0);
     }
     updateLibraryButtons();
+    renderReviewList(items);
     return { items, errors };
   }
 
@@ -824,6 +944,9 @@
     document.body.classList.toggle('listening-private', value && ui.hideText.checked);
     ui.start.disabled = value;
     ui.stop.disabled = !value;
+    ui.reviewAll.disabled = value;
+    ui.reviewOnly.disabled = value;
+    for (const row of reviewInputs) row.input.disabled = value;
     ui.backupExport.disabled = value;
     ui.backupImport.disabled = value;
     ui.formatEnglish.disabled = value;
@@ -841,7 +964,9 @@
 
   function updateValidationButtonsOnly() {
     const { items, errors } = parseMaterials(ui.materials.value);
-    ui.start.disabled = !hasSpeech || items.length === 0 || errors.length > 0;
+    const playCount = reviewOnly
+      ? items.filter(item => reviewKeys.has(reviewKey(item.english))).length : items.length;
+    ui.start.disabled = !hasSpeech || playCount === 0 || errors.length > 0;
   }
 
   function sleep(ms, token, text) {
@@ -1080,6 +1205,10 @@
     const { items, errors } = updateValidation();
     if (!hasSpeech) { setNotice('このブラウザは音声読み上げに対応していません。Safariで開いてください。', 'error'); return; }
     if (errors.length || items.length === 0) { setNotice('教材の入力エラーを先に修正してください。', 'error'); return; }
+    const playItems = reviewOnly ? items.filter(item => reviewKeys.has(reviewKey(item.english))) : items;
+    if (!playItems.length) {
+      setNotice('復習する英文にチェックを付けてください。', 'error'); return;
+    }
     // 同期的に、タップした処理の中から最初のspeak()を実行する。
     // iPhoneで必要になるユーザー操作を保つため、開始前にはawaitを入れない。
     refreshVoices();
@@ -1100,10 +1229,14 @@
     setPlaying(true);
     setProgress(0);
     setNotice('再生中です。端末の音量とイヤホンの接続を確認してください。');
-    void playback(token, items, settings);
+    void playback(token, playItems, settings);
   }
 
   const stored = getSaved();
+  reviewOnly = stored.reviewOnly === true;
+  reviewKeys = new Set(Array.isArray(stored.reviewKeys)
+    ? stored.reviewKeys.filter(value => typeof value === 'string' && value.length > 0 && value.length <= 2000).slice(0, 1000)
+    : []);
   drafts.paired = typeof stored.pairedDraft === 'string' ? stored.pairedDraft
     : (typeof stored.text === 'string' ? stored.text : EXAMPLE);
   drafts.english = typeof stored.englishDraft === 'string' ? stored.englishDraft : '';
@@ -1126,6 +1259,8 @@
   updateFormatUI();
   updateValidation();
 
+  ui.reviewAll.addEventListener('click', () => toggleReviewMode(false));
+  ui.reviewOnly.addEventListener('click', () => toggleReviewMode(true));
   ui.backupExport.addEventListener('click', exportBackup);
   ui.backupImport.addEventListener('click', () => {
     if (!isPlaying) ui.backupFile.click();
