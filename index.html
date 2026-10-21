@@ -157,12 +157,30 @@
     .now-playing { min-height: 67px; padding: 14px 3px 13px; }
     .playing-big { font-size: clamp(17px, 4.7vw, 21px); }
     .playing-sub { font-size: 12px; margin-top: 5px; }
-    .shuffle-row { display:flex; align-items:center; justify-content:flex-end; margin:8px 0 -2px; }
-    .shuffle-chip { min-height:35px; padding:5px 12px; border:1px solid var(--line); border-radius:30px; background:var(--surface-alt); color:var(--sub); font-size:12px; font-weight:760; }
-    .difficult-row { margin-top: 4px; margin-bottom: 1px; }
-    .difficult-row .shuffle-chip { max-width: 100%; }
-    .shuffle-chip.active { color:var(--primary); background:var(--accent); border-color:var(--primary); }
-    .shuffle-chip:disabled { opacity:.65; }
+    /* v1.3.2: compact single-row playback filters */
+    .playback-filters {
+      display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:6px; margin:9px 0 1px;
+    }
+    .filter-chip {
+      min-width:0; width:100%; min-height:42px; padding:5px 3px;
+      border:2px solid transparent; border-radius:13px;
+      background:var(--surface-alt); color:var(--sub);
+      white-space:nowrap; font-size:clamp(10px,2.85vw,12px);
+      font-weight:760; text-align:center; line-height:1.2;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .filter-chip.active {
+      border-color:var(--primary); background:var(--accent); color:var(--primary);
+    }
+    @media (prefers-color-scheme:dark) {
+      .filter-chip.active { border-color:#fff; color:var(--text); }
+    }
+    .filter-chip:disabled { opacity:.88; }
+    @media (max-width:350px) {
+      .playback-filters { gap:3px; }
+      .filter-chip { font-size:10px; padding-inline:1px; }
+    }
     .study-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
     .study-stat { padding:12px; border-radius:12px; background:var(--surface-alt); }
     .study-stat strong { display:block; font-size:23px; font-variant-numeric:tabular-nums; }
@@ -265,7 +283,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.1</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.2</span></div>
     <div class="head-title-row">
       <h1>My English Coach</h1>
       <details class="options-popover" id="options-details">
@@ -440,9 +458,11 @@
       <span id="position" class="question-no">0 / 3 問</span>
     </div>
     <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
-    <div class="shuffle-row"><button type="button" id="shuffle-toggle" class="shuffle-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム OFF</button></div>
-    <div class="shuffle-row difficult-row"><button type="button" id="difficult-toggle" class="shuffle-chip" aria-pressed="false" aria-label="まだ苦手な英文のみ再生する">🎯 苦手のみ再生 OFF（0問）</button></div>
-    <div class="shuffle-row difficult-row"><button type="button" id="due-toggle" class="shuffle-chip" aria-pressed="false" aria-label="今日が復習日になった英文のみ再生する">📅 今日の復習 OFF（0問）</button></div>
+    <div class="playback-filters" role="group" aria-label="出題順・再生対象の設定">
+      <button type="button" id="shuffle-toggle" class="filter-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム</button>
+      <button type="button" id="difficult-toggle" class="filter-chip" aria-pressed="false" aria-label="まだ苦手な英文のみ再生する">🎯 苦手(0)</button>
+      <button type="button" id="due-toggle" class="filter-chip" aria-pressed="false" aria-label="今日が復習日になった英文のみ再生する">📅 復習(0)</button>
+    </div>
     <div class="now-playing">
       <p id="display-text" class="playing-big">準備完了！</p>
       <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
@@ -678,7 +698,7 @@
   function updateDueUI(items = parseMaterials(ui.materials.value).items) {
     const count = countDue(items);
     const special = repeatMode === 'sentence' || repeatMode === 'segment';
-    ui.dueToggle.textContent = `📅 今日の復習 ${dueOnly ? 'ON' : 'OFF'}（${count}問）`;
+    ui.dueToggle.textContent = `📅 復習(${count})`;
     ui.dueToggle.classList.toggle('active', dueOnly && !special);
     ui.dueToggle.setAttribute('aria-pressed', String(dueOnly));
     ui.dueToggle.disabled = isPlaying || special || progressStorageError;
@@ -708,7 +728,7 @@
   function updateDifficultUI(items = parseMaterials(ui.materials.value).items) {
     const count = countDifficult(items);
     const special = repeatMode === 'sentence' || repeatMode === 'segment';
-    ui.difficultToggle.textContent = `🎯 苦手のみ再生 ${reviewOnly ? 'ON' : 'OFF'}（${count}問）`;
+    ui.difficultToggle.textContent = `🎯 苦手(${count})`;
     ui.difficultToggle.classList.toggle('active', reviewOnly && !special);
     ui.difficultToggle.setAttribute('aria-pressed', String(reviewOnly));
     ui.difficultToggle.disabled = isPlaying || special || progressStorageError;
@@ -814,7 +834,7 @@
   }
 
   function updateShuffleUI() {
-    ui.shuffleToggle.textContent = shuffleEnabled ? '🔀 ランダム ON' : '🔀 ランダム OFF';
+    ui.shuffleToggle.textContent = '🔀 ランダム';
     ui.shuffleToggle.classList.toggle('active', shuffleEnabled);
     ui.shuffleToggle.setAttribute('aria-pressed', String(shuffleEnabled));
     ui.shuffleToggle.setAttribute('aria-label', shuffleEnabled
