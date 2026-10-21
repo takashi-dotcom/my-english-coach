@@ -106,12 +106,9 @@
     .review-japanese { display: block; margin-top: 3px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
     .review-help { font-size: 12px; line-height: 1.6; color: var(--sub); margin: 5px 0; }
     .listening-private #review-list { display: none; }
-    .format-card { padding: 16px 18px; }
-    .format-label { display:block; margin-bottom:10px; font-size:13px; color:var(--sub); font-weight:730; }
-    .format-switch { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px; background:var(--surface-alt); border-radius:15px; border:1px solid var(--line); }
-    .format-tab { min-height:48px; padding:8px 3px; border:1px solid transparent; border-radius:11px; background:transparent; color:var(--sub); font-size:14px; font-weight:750; }
+    .format-switch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; padding:4px; margin:0 0 12px; background:var(--surface-alt); border-radius:13px; border:1px solid var(--line); }
+    .format-tab { min-height:40px; padding:7px 3px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--sub); font-size:clamp(12px,3.5vw,14px); font-weight:750; white-space:nowrap; }
     .format-tab.active { background:var(--primary); color:var(--primary-text); }
-    .format-help { margin:10px 2px 0; font-size:12px; line-height:1.6; color:var(--sub); }
     body.english-only #playback-mode-field, body.english-only #answer-setting-field, body.english-only #japanese-voice-field { display:none; }
     .voice-details { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--sub); font-size: 12px; }
     .voice-details summary { cursor: pointer; font-weight: 700; color: var(--text); }
@@ -226,9 +223,9 @@
     .fold-content .settings { gap: 10px; }
     .fold-content .field select { min-height: 42px; }
     .fold-card .review-list { max-height: 285px; }
-    .format-card { padding: 12px 15px; }
-    .format-card .format-label { margin-bottom: 7px; }
-    .format-card .format-tab { min-height: 42px; }
+    #material-card { padding: 16px 15px; }
+    #material-card .section-head { margin-bottom: 11px; }
+    #material-card textarea { min-height: 145px; }
     .material-head-hint { color: var(--sub); font-size: 12px; }
     @media (max-width: 365px) {
       .control-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
@@ -283,7 +280,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.2</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.3</span></div>
     <div class="head-title-row">
       <h1>My English Coach</h1>
       <details class="options-popover" id="options-details">
@@ -498,23 +495,16 @@
     <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">最初は ▶ をタップしてください。🔁 で繰り返し設定を開けます。</p>
   </section>
 
-  <section class="card format-card" aria-label="教材の入力形式">
-    <span class="format-label">まず、教材の形式を選ぼう</span>
-    <div class="format-switch" role="group" aria-label="教材の入力形式">
-      <button type="button" id="format-english" class="format-tab" aria-pressed="false">🎧 英語のみ</button>
-      <button type="button" id="format-paired" class="format-tab active" aria-pressed="true">📖 英語＋日本語訳</button>
-    </div>
-    <p id="format-help" class="format-help">1行ごとに「英文 | 日本語訳」を入力します。</p>
-  </section>
-
   <section class="card" id="material-card" aria-labelledby="material-title">
     <div class="section-head">
       <h2 class="section-title" id="material-title">02　英文を貼り付ける</h2>
       <span class="count" id="question-count">3問</span>
     </div>
-    <label for="materials" class="caption" id="format-label">1行につき「英文 | 日本語訳」を1セット</label>
-    <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="format-hint validation"></textarea>
-    <p class="hint" id="format-hint">例：The train is late. | 電車が遅れています。<br>空行は無視します。学習モードでは日本語訳も読み上げます。</p>
+    <div class="format-switch" role="group" aria-label="教材の入力形式">
+      <button type="button" id="format-english" class="format-tab" aria-pressed="false">英語のみ</button>
+      <button type="button" id="format-paired" class="format-tab active" aria-pressed="true">英語＋日本語訳</button>
+    </div>
+    <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="英語と日本語訳を入力" aria-describedby="validation"></textarea>
     <div id="validation" class="validation good" role="status" aria-live="polite"></div>
   </section>
 
@@ -545,7 +535,6 @@
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
     formatEnglish: $('format-english'), formatPaired: $('format-paired'),
-    formatHelp: $('format-help'), formatLabel: $('format-label'), formatHint: $('format-hint'),
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
     libraryClearName: $('library-clear-name'), libraryStatus: $('library-status'),
@@ -614,13 +603,8 @@
     ui.formatEnglish.setAttribute('aria-pressed', String(en));
     ui.formatPaired.setAttribute('aria-pressed', String(!en));
     document.body.classList.toggle('english-only', en);
-    ui.formatHelp.textContent = en
-      ? '英文を1行ずつ入力します。日本語読み上げ・答え合わせは自動的に省略します。'
-      : '1行ごとに「英文 | 日本語訳」を入力します。';
-    ui.formatLabel.textContent = en ? '1行に英文を1つずつ入力' : '1行につき「英文 | 日本語訳」を1セット';
-    ui.formatHint.textContent = en
-      ? '例：The train is late.（改行して次の英文） 空行は無視します。'
-      : '例：The train is late. | 電車が遅れています。 空行は無視します。';
+    ui.materials.setAttribute('aria-label', en
+      ? '英語のみを1行ずつ入力' : '英語と日本語訳を入力');
   }
 
   function switchInputMode(next) {
