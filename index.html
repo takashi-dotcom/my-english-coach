@@ -226,6 +226,18 @@
     #material-card { padding: 16px 15px; }
     #material-card .section-head { margin-bottom: 11px; }
     #material-card textarea { min-height: 145px; }
+    .editor-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:0 0 10px; }
+    .editor-action {
+      min-width:0; min-height:42px; padding:7px 3px;
+      border:1px solid var(--line); border-radius:11px;
+      background:var(--surface-alt); color:var(--text);
+      white-space:nowrap; font-size:clamp(11px,3.1vw,13px); font-weight:730;
+    }
+    .editor-action.destructive { color:var(--error); }
+    .editor-status { margin:0 0 9px; font-size:12px; color:var(--success); line-height:1.5; }
+    .editor-status:empty { display:none; }
+    .editor-status[data-error="true"] { color:var(--error); }
+    @media (max-width:350px) { .editor-actions { gap:4px; } .editor-action { font-size:11px; padding:6px 1px; } }
     .material-head-hint { color: var(--sub); font-size: 12px; }
     @media (max-width: 365px) {
       .control-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
@@ -280,7 +292,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.3</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.4</span></div>
     <div class="head-title-row">
       <h1>My English Coach</h1>
       <details class="options-popover" id="options-details">
@@ -504,6 +516,12 @@
       <button type="button" id="format-english" class="format-tab" aria-pressed="false">英語のみ</button>
       <button type="button" id="format-paired" class="format-tab active" aria-pressed="true">英語＋日本語訳</button>
     </div>
+    <div class="editor-actions" role="group" aria-label="教材テキストの編集操作">
+      <button type="button" id="editor-clear" class="editor-action destructive" aria-label="入力中のテキストをすべて削除">🗑 全削除</button>
+      <button type="button" id="editor-replace" class="editor-action" aria-label="今のテキストをすべて削除し、クリップボードの文章に入れ替える">🔄 入替貼付</button>
+      <button type="button" id="editor-append" class="editor-action" aria-label="クリップボードの文章を現在のテキストの末尾に追加する">📋 追加貼付</button>
+    </div>
+    <p id="editor-status" class="editor-status" role="status" aria-live="polite"></p>
     <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="英語と日本語訳を入力" aria-describedby="validation"></textarea>
     <div id="validation" class="validation good" role="status" aria-live="polite"></div>
   </section>
@@ -534,6 +552,8 @@
   const $ = (id) => document.getElementById(id);
   const ui = {
     materials: $('materials'), validation: $('validation'), count: $('question-count'),
+    editorClear: $('editor-clear'), editorReplace: $('editor-replace'),
+    editorAppend: $('editor-append'), editorStatus: $('editor-status'),
     formatEnglish: $('format-english'), formatPaired: $('format-paired'),
     libraryName: $('library-name'), libraryCount: $('library-count'), librarySelect: $('library-select'),
     librarySave: $('library-save'), libraryLoad: $('library-load'), libraryDelete: $('library-delete'),
@@ -588,6 +608,7 @@
   let previewKind = null;
   let library = [];
   let libraryStorageError = false;
+  let clipboardPending = false;
   let progressStorageError = false;
   let progressData = { version: 1, totalPlays: 0, daily: {}, items: {} };
 
@@ -619,6 +640,71 @@
     updateSettingsSummary();
     save();
     libraryMessage('入力形式を変更しました。元の形式の下書きも保存されています。');
+  }
+
+  function editorMessage(message, error = false) {
+    ui.editorStatus.textContent = message;
+    ui.editorStatus.dataset.error = String(error);
+  }
+
+  function updateEditorActionButtons() {
+    ui.editorClear.disabled = isPlaying || clipboardPending || !ui.materials.value.length;
+    ui.editorReplace.disabled = isPlaying || clipboardPending;
+    ui.editorAppend.disabled = isPlaying || clipboardPending;
+  }
+
+  function applyEditorText(value, successMessage) {
+    if (isPlaying) return;
+    ui.materials.value = value;
+    updateValidation();
+    save();
+    editorMessage(successMessage);
+    updateEditorActionButtons();
+  }
+
+  function clearEditor() {
+    if (isPlaying || clipboardPending || !ui.materials.value.length) return;
+    if (!window.confirm('入力中の英文をすべて削除しますか？保存済み教材は削除されません。')) return;
+    applyEditorText('', '入力欄を空にしました。');
+  }
+
+  async function pasteFromClipboard(replaceCurrent) {
+    if (isPlaying || clipboardPending) return;
+    // Clipboard API はユーザーによるボタン操作から直接呼び出す。
+    const clipboard = navigator.clipboard;
+    if (!clipboard || typeof clipboard.readText !== 'function') {
+      editorMessage('このSafariでは自動貼り付けを利用できません。入力欄を長押しして「ペースト」を選んでください。', true);
+      return;
+    }
+    clipboardPending = true;
+    updateEditorActionButtons();
+    try {
+      const copied = (await clipboard.readText()).replace(/\r\n?/g, '\n').trim();
+      if (isPlaying) {
+        editorMessage('再生中は入力欄を変更できません。停止後にもう一度お試しください。', true);
+        return;
+      }
+      if (!copied) {
+        editorMessage('クリップボードに貼り付けられるテキストがありません。元の英文は変更していません。', true);
+        return;
+      }
+      const oldValue = ui.materials.value;
+      if (replaceCurrent && oldValue && !window.confirm('入力中の英文をコピーしたテキストに入れ替えますか？')) return;
+      const separator = !replaceCurrent && oldValue && !oldValue.endsWith('\n') ? '\n' : '';
+      const nextValue = replaceCurrent ? copied : oldValue + separator + copied;
+      if (nextValue.length > 200000) {
+        editorMessage('文章が長すぎます。20万文字以内にしてください。元の英文は変更していません。', true);
+        return;
+      }
+      applyEditorText(nextValue, replaceCurrent
+        ? 'コピーしたテキストに入れ替えました。'
+        : 'コピーしたテキストを末尾に追加しました。');
+    } catch (_) {
+      editorMessage('Safariがクリップボードを読み取れませんでした。貼り付けを許可するか、入力欄を長押しして「ペースト」を選んでください。元の英文は変更していません。', true);
+    } finally {
+      clipboardPending = false;
+      updateEditorActionButtons();
+    }
   }
 
   function getSaved() {
@@ -1411,6 +1497,7 @@
     updateLibraryButtons();
     updateSettingsSummary();
     updateRepeatUI(items);
+    updateEditorActionButtons();
     drawProgressOverview();
     renderMasteryRows(items);
     updateValidationButtonsOnly();
@@ -1607,6 +1694,7 @@
     ui.repeatSegment.disabled = value || repeatMode !== 'segment';
     ui.difficultToggle.disabled = value || repeatMode === 'sentence' || repeatMode === 'segment' || progressStorageError;
     ui.dueToggle.disabled = value || repeatMode === 'sentence' || repeatMode === 'segment' || progressStorageError;
+    updateEditorActionButtons();
     ui.backupExport.disabled = value;
     ui.backupImport.disabled = value;
     ui.formatEnglish.disabled = value;
@@ -2057,7 +2145,10 @@
   ui.backupFile.addEventListener('change', importBackup);
   ui.formatEnglish.addEventListener('click', () => switchInputMode('english'));
   ui.formatPaired.addEventListener('click', () => switchInputMode('paired'));
-  ui.materials.addEventListener('input', () => { updateValidation(); save(); });
+  ui.materials.addEventListener('input', () => { updateValidation(); save(); editorMessage(''); });
+  ui.editorClear.addEventListener('click', clearEditor);
+  ui.editorReplace.addEventListener('click', () => { void pasteFromClipboard(true); });
+  ui.editorAppend.addEventListener('click', () => { void pasteFromClipboard(false); });
   ui.libraryName.addEventListener('input', () => { updateLibraryButtons(); save(); });
   ui.librarySelect.addEventListener('change', updateLibraryButtons);
   ui.librarySave.addEventListener('click', saveToLibrary);
