@@ -220,80 +220,57 @@
       .fold-heading { font-size: 15px; }
       .fold-summary { padding-left: 13px; padding-right: 13px; }
     }
+    /* v1.3.1: header anchored options menu, four original settings panels unchanged */
+    .head { position: relative; }
+    .head-title-row { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+    .head-title-row h1 { min-width: 0; flex: 1 1 auto; white-space: nowrap; font-size: clamp(24px, 6.75vw, 36px); }
+    .options-popover { flex: 0 0 auto; position: relative; z-index: 30; }
+    .options-popover > summary { list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .options-popover > summary::-webkit-details-marker { display: none; }
+    .options-trigger {
+      min-height: 43px; display: inline-flex; align-items: center; justify-content: center;
+      gap: 4px; white-space: nowrap; border-radius: 13px; padding: 8px 10px;
+      background: var(--surface); color: var(--text); border: 1px solid var(--line);
+      font-size: 12px; font-weight: 760;
+    }
+    .options-popover[open] .options-trigger { color: var(--primary); background: var(--accent); border-color: var(--primary); }
+    .options-caret { display: inline-block; font-size: 17px; line-height: 1; transition: transform .15s ease; }
+    .options-popover[open] .options-caret { transform: rotate(180deg); }
+    .options-menu {
+      position: absolute; z-index: 40; top: calc(100% + 9px); right: 0;
+      width: min(348px, calc(100vw - 32px)); max-height: min(72dvh, 600px);
+      overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+      padding: 9px; border: 1px solid var(--line); border-radius: 18px;
+      background: var(--surface); box-shadow: 0 15px 38px rgba(0,0,0,.23);
+    }
+    .options-menu .fold-card { margin: 0 0 7px; border-radius: 12px; box-shadow: none; }
+    .options-menu .fold-card:last-child { margin-bottom: 0; }
+    .options-menu .fold-summary { padding: 12px; min-height: 53px; gap: 6px; }
+    .options-menu .fold-heading { font-size: 14px; white-space: nowrap; }
+    .options-menu .fold-meta { font-size: 10px; min-width: 0; }
+    .options-menu .fold-content { padding: 12px; }
+    .options-menu .settings { gap: 10px; }
+    .options-menu .count { padding: 4px 7px; font-size: 10px; }
+    .head .options-menu p { font-size: 12px; line-height: 1.6; }
+    .head .options-menu .progress-note { margin-top: 12px; }
+    .head .options-menu .hint { margin-top: 8px; }
+    .head .options-menu .library-status, .head .options-menu .backup-status { margin-top: 10px; }
+    @media (max-width: 365px) {
+      .head-title-row { gap: 4px; }
+      .head-title-row h1 { font-size: clamp(21px, 6.2vw, 25px); letter-spacing: -.045em; }
+      .options-trigger { font-size: 11px; padding: 7px 8px; }
+    }
   </style>
 </head>
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3</span></div>
-    <h1>My English Coach</h1>
-    <p>短い英文から、耳で英語に慣れていこう。</p>
-  </header>
-
-  <section class="player" id="player-panel" aria-labelledby="player-title">
-    <div class="player-top">
-      <span id="player-title" class="player-title">01　リスニングプレイヤー</span>
-      <span id="position" class="question-no">0 / 3 問</span>
-    </div>
-    <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
-    <div class="shuffle-row"><button type="button" id="shuffle-toggle" class="shuffle-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム OFF</button></div>
-    <div class="shuffle-row difficult-row"><button type="button" id="difficult-toggle" class="shuffle-chip" aria-pressed="false" aria-label="まだ苦手な英文のみ再生する">🎯 苦手のみ再生 OFF（0問）</button></div>
-    <div class="shuffle-row difficult-row"><button type="button" id="due-toggle" class="shuffle-chip" aria-pressed="false" aria-label="今日が復習日になった英文のみ再生する">📅 今日の復習 OFF（0問）</button></div>
-    <div class="now-playing">
-      <p id="display-text" class="playing-big">準備完了！</p>
-      <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
-    </div>
-    <div class="control-strip" role="group" aria-label="リスニング再生操作">
-      <button type="button" id="previous-question" class="control-button" aria-label="前の問題" title="前の問題" disabled><span class="control-symbol">⏮</span><span class="control-caption">前へ</span></button>
-      <button type="button" id="replay-question" class="control-button" aria-label="現在の問題をもう一度聞く" title="もう一度聞く" disabled><span class="control-symbol">↻</span><span class="control-caption">もう一度</span></button>
-      <button type="button" id="start" class="control-button play" aria-label="最初から再生" title="最初から再生"><span class="control-symbol">▶</span><span class="control-caption">再生</span></button>
-      <button type="button" id="pause-resume" class="control-button" aria-label="一時停止" title="一時停止" disabled><span class="control-symbol" id="pause-symbol">⏸</span><span class="control-caption" id="pause-caption">一時停止</span></button>
-      <button type="button" id="next-question" class="control-button" aria-label="次の問題" title="次の問題" disabled><span class="control-symbol">⏭</span><span class="control-caption">次へ</span></button>
-      <button type="button" id="stop" class="control-button" aria-label="再生を停止" title="停止" disabled><span class="control-symbol">⏹</span><span class="control-caption">停止</span></button>
-      <button type="button" id="repeat-toggle" class="control-button" aria-label="リピートの設定を開く" aria-expanded="false" aria-controls="repeat-controls" title="リピート設定"><span class="control-symbol">🔁</span><span class="control-caption">リピート</span></button>
-    </div>
-    <div class="repeat-controls" id="repeat-controls" hidden>
-      <label for="repeat-mode">リピートの種類</label>
-      <select id="repeat-mode">
-        <option value="off">リピートしない（通常再生）</option>
-        <option value="all">教材の最後から最初へ繰り返す</option>
-        <option value="sentence">選んだ英文1つだけを繰り返す</option>
-        <option value="segment">指定した英文の一部分を繰り返す</option>
-      </select>
-      <div class="repeat-detail" id="repeat-sentence-box" hidden>
-        <label for="repeat-sentence">繰り返す英文</label>
-        <select id="repeat-sentence"></select>
-      </div>
-      <div class="repeat-detail" id="repeat-segment-box" hidden>
-        <label for="repeat-segment">繰り返す部分</label>
-        <input id="repeat-segment" type="text" maxlength="500" placeholder="例：My dog is" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <p class="repeat-info">英文の一部分を入力すると、その英語だけを繰り返します。</p>
-      </div>
-      <p class="repeat-info" id="repeat-info">最後まで再生すると終了します。</p>
-    </div>
-    <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">最初は ▶ をタップしてください。🔁 で繰り返し設定を開けます。</p>
-  </section>
-
-  <section class="card format-card" aria-label="教材の入力形式">
-    <span class="format-label">まず、教材の形式を選ぼう</span>
-    <div class="format-switch" role="group" aria-label="教材の入力形式">
-      <button type="button" id="format-english" class="format-tab" aria-pressed="false">🎧 英語のみ</button>
-      <button type="button" id="format-paired" class="format-tab active" aria-pressed="true">📖 英語＋日本語訳</button>
-    </div>
-    <p id="format-help" class="format-help">1行ごとに「英文 | 日本語訳」を入力します。</p>
-  </section>
-
-  <section class="card" id="material-card" aria-labelledby="material-title">
-    <div class="section-head">
-      <h2 class="section-title" id="material-title">02　英文を貼り付ける</h2>
-      <span class="count" id="question-count">3問</span>
-    </div>
-    <label for="materials" class="caption" id="format-label">1行につき「英文 | 日本語訳」を1セット</label>
-    <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="format-hint validation"></textarea>
-    <p class="hint" id="format-hint">例：The train is late. | 電車が遅れています。<br>空行は無視します。学習モードでは日本語訳も読み上げます。</p>
-    <div id="validation" class="validation good" role="status" aria-live="polite"></div>
-  </section>
-
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.1</span></div>
+    <div class="head-title-row">
+      <h1>My English Coach</h1>
+      <details class="options-popover" id="options-details">
+        <summary class="options-trigger" aria-controls="options-menu">⚙️ オプション <span class="options-caret" aria-hidden="true">⌄</span></summary>
+        <div class="options-menu" id="options-menu" aria-label="アプリのオプション">
   <section class="card fold-card" aria-labelledby="settings-title">
     <details id="settings-details">
       <summary class="fold-summary">
@@ -451,6 +428,77 @@
       </div>
     </details>
   </section>
+        </div>
+      </details>
+    </div>
+    <p>短い英文から、耳で英語に慣れていこう。</p>
+  </header>
+
+  <section class="player" id="player-panel" aria-labelledby="player-title">
+    <div class="player-top">
+      <span id="player-title" class="player-title">01　リスニングプレイヤー</span>
+      <span id="position" class="question-no">0 / 3 問</span>
+    </div>
+    <div class="progress-track" role="progressbar" aria-label="再生進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="shuffle-row"><button type="button" id="shuffle-toggle" class="shuffle-chip" aria-pressed="false" aria-label="ランダム再生をオンにする">🔀 ランダム OFF</button></div>
+    <div class="shuffle-row difficult-row"><button type="button" id="difficult-toggle" class="shuffle-chip" aria-pressed="false" aria-label="まだ苦手な英文のみ再生する">🎯 苦手のみ再生 OFF（0問）</button></div>
+    <div class="shuffle-row difficult-row"><button type="button" id="due-toggle" class="shuffle-chip" aria-pressed="false" aria-label="今日が復習日になった英文のみ再生する">📅 今日の復習 OFF（0問）</button></div>
+    <div class="now-playing">
+      <p id="display-text" class="playing-big">準備完了！</p>
+      <p id="display-sub" class="playing-sub">▶ で再生を開始</p>
+    </div>
+    <div class="control-strip" role="group" aria-label="リスニング再生操作">
+      <button type="button" id="previous-question" class="control-button" aria-label="前の問題" title="前の問題" disabled><span class="control-symbol">⏮</span><span class="control-caption">前へ</span></button>
+      <button type="button" id="replay-question" class="control-button" aria-label="現在の問題をもう一度聞く" title="もう一度聞く" disabled><span class="control-symbol">↻</span><span class="control-caption">もう一度</span></button>
+      <button type="button" id="start" class="control-button play" aria-label="最初から再生" title="最初から再生"><span class="control-symbol">▶</span><span class="control-caption">再生</span></button>
+      <button type="button" id="pause-resume" class="control-button" aria-label="一時停止" title="一時停止" disabled><span class="control-symbol" id="pause-symbol">⏸</span><span class="control-caption" id="pause-caption">一時停止</span></button>
+      <button type="button" id="next-question" class="control-button" aria-label="次の問題" title="次の問題" disabled><span class="control-symbol">⏭</span><span class="control-caption">次へ</span></button>
+      <button type="button" id="stop" class="control-button" aria-label="再生を停止" title="停止" disabled><span class="control-symbol">⏹</span><span class="control-caption">停止</span></button>
+      <button type="button" id="repeat-toggle" class="control-button" aria-label="リピートの設定を開く" aria-expanded="false" aria-controls="repeat-controls" title="リピート設定"><span class="control-symbol">🔁</span><span class="control-caption">リピート</span></button>
+    </div>
+    <div class="repeat-controls" id="repeat-controls" hidden>
+      <label for="repeat-mode">リピートの種類</label>
+      <select id="repeat-mode">
+        <option value="off">リピートしない（通常再生）</option>
+        <option value="all">教材の最後から最初へ繰り返す</option>
+        <option value="sentence">選んだ英文1つだけを繰り返す</option>
+        <option value="segment">指定した英文の一部分を繰り返す</option>
+      </select>
+      <div class="repeat-detail" id="repeat-sentence-box" hidden>
+        <label for="repeat-sentence">繰り返す英文</label>
+        <select id="repeat-sentence"></select>
+      </div>
+      <div class="repeat-detail" id="repeat-segment-box" hidden>
+        <label for="repeat-segment">繰り返す部分</label>
+        <input id="repeat-segment" type="text" maxlength="500" placeholder="例：My dog is" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <p class="repeat-info">英文の一部分を入力すると、その英語だけを繰り返します。</p>
+      </div>
+      <p class="repeat-info" id="repeat-info">最後まで再生すると終了します。</p>
+    </div>
+    <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">最初は ▶ をタップしてください。🔁 で繰り返し設定を開けます。</p>
+  </section>
+
+  <section class="card format-card" aria-label="教材の入力形式">
+    <span class="format-label">まず、教材の形式を選ぼう</span>
+    <div class="format-switch" role="group" aria-label="教材の入力形式">
+      <button type="button" id="format-english" class="format-tab" aria-pressed="false">🎧 英語のみ</button>
+      <button type="button" id="format-paired" class="format-tab active" aria-pressed="true">📖 英語＋日本語訳</button>
+    </div>
+    <p id="format-help" class="format-help">1行ごとに「英文 | 日本語訳」を入力します。</p>
+  </section>
+
+  <section class="card" id="material-card" aria-labelledby="material-title">
+    <div class="section-head">
+      <h2 class="section-title" id="material-title">02　英文を貼り付ける</h2>
+      <span class="count" id="question-count">3問</span>
+    </div>
+    <label for="materials" class="caption" id="format-label">1行につき「英文 | 日本語訳」を1セット</label>
+    <textarea id="materials" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="format-hint validation"></textarea>
+    <p class="hint" id="format-hint">例：The train is late. | 電車が遅れています。<br>空行は無視します。学習モードでは日本語訳も読み上げます。</p>
+    <div id="validation" class="validation good" role="status" aria-live="polite"></div>
+  </section>
+
+
 
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
@@ -1957,6 +2005,18 @@
   updateFormatUI();
   updateValidation();
   updateShuffleUI();
+
+  // メニュー外タップやEscapeでも閉じる。開いた設定パネルの状態は保持。
+  document.addEventListener('pointerdown', (event) => {
+    const options = document.getElementById('options-details');
+    if (options.open && !options.contains(event.target)) options.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      const options = document.getElementById('options-details');
+      if (options.open) options.open = false;
+    }
+  });
 
   ui.progressDetails.addEventListener('toggle', () => {
     if (ui.progressDetails.open) { drawProgressOverview(); renderMasteryRows(); }
