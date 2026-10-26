@@ -210,6 +210,9 @@
     .repeat-controls select, .repeat-controls input { width: 100%; min-height: 43px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; font-size: 14px; color: var(--text); background: var(--surface); }
     .repeat-controls .repeat-detail { margin-top: 10px; }
     .repeat-controls .repeat-detail[hidden] { display: none; }
+    .wake-status { margin:7px 3px 0; color:var(--sub); font-size:11px; line-height:1.5; }
+    .wake-status[data-error="true"] { color:var(--error); }
+    .wake-status[hidden] { display:none; }
     .player .notice { margin-top: 8px; line-height: 1.5; }
     .fold-card { padding: 0; }
     .fold-card > details > summary { list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -292,7 +295,7 @@
 <body>
 <main>
   <header class="head">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.4</span></div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> LISTEN · THINK · LEARN <span class="caption">v1.3.5</span></div>
     <div class="head-title-row">
       <h1>My English Coach</h1>
       <details class="options-popover" id="options-details">
@@ -505,6 +508,7 @@
       <p class="repeat-info" id="repeat-info">最後まで再生すると終了します。</p>
     </div>
     <p class="notice" id="notice" data-type="normal" role="status" aria-live="polite">最初は ▶ をタップしてください。🔁 で繰り返し設定を開けます。</p>
+    <p id="wake-status" class="wake-status" role="status" aria-live="polite" hidden></p>
   </section>
 
   <section class="card" id="material-card" aria-labelledby="material-title">
@@ -531,7 +535,7 @@
   <footer class="footer">
     教材と設定は、このブラウザ内に一時保存されます。<br>
     ※教材ライブラリは端末のブラウザ内に保存します。Safariのデータ削除・端末変更では消える場合があります。理解度と学習記録もバックアップに含まれます。バックアップを定期的に保存してください。<br>
-    ※画面ロック中や他アプリへ移動した後の連続再生は保証されません。
+    ※再生中は対応ブラウザで画面の自動スリープを防止します。電池の消費が増える場合があります。手動ロックや他アプリへ移動した後の連続再生は保証されません。
   </footer>
 </main>
 <script>
@@ -567,7 +571,7 @@
     japaneseVoice: $('japanese-voice'), japaneseVoiceInfo: $('japanese-voice-info'),
     previewJapanese: $('preview-japanese'), reloadJapaneseVoices: $('reload-japanese-voices'),
     reloadVoices: $('reload-voices'), hideText: $('hide-text'),
-    start: $('start'), stop: $('stop'), notice: $('notice'),
+    start: $('start'), stop: $('stop'), notice: $('notice'), wakeStatus: $('wake-status'),
     progressDetails: $('progress-details'), progressBrief: $('progress-brief'),
     statToday: $('stat-today'), statUnique: $('stat-unique'), statTotal: $('stat-total'),
     statKnown: $('stat-known'), studyChart: $('study-chart'), masterySummary: $('mastery-summary'),
@@ -590,6 +594,9 @@
   let runId = 0; // 停止や移動時には番号を変更して古い処理を終了する
   let playbackSession = null; // 今の教材・設定・問題番号を維持する
   let isPaused = false;
+  let screenWakeLock = null;
+  let screenWakeRequest = null;
+  let screenWakeGeneration = 0;
   let shuffleEnabled = false;
   let repeatMode = 'off';
   let repeatSentenceKey = '';
@@ -1468,6 +1475,67 @@
     ui.notice.dataset.type = type;
   }
 
+  function setWakeStatus(message, error = false) {
+    ui.wakeStatus.textContent = message;
+    ui.wakeStatus.dataset.error = String(error);
+    ui.wakeStatus.hidden = !message;
+  }
+
+  function releaseScreenWakeLock() {
+    // 以前の取得処理が解決しても、終了済みの再生に割り当てない。
+    screenWakeGeneration++;
+    screenWakeRequest = null;
+    const lock = screenWakeLock;
+    screenWakeLock = null;
+    if (lock) {
+      try { void Promise.resolve(lock.release()).catch(() => {}); } catch (_) {}
+    }
+    setWakeStatus('');
+  }
+
+  function acquireScreenWakeLock() {
+    if (!isPlaying || document.hidden) return;
+    if (screenWakeLock && !screenWakeLock.released) return;
+    if (screenWakeRequest) return;
+    if (!navigator.wakeLock || typeof navigator.wakeLock.request !== 'function') {
+      setWakeStatus('⚠️ この環境ではスリープ防止に非対応です。iPhoneの自動ロック設定をご確認ください。', true);
+      return;
+    }
+
+    // Safariのユーザー操作から直接リクエストし、音声開始を待たせない。
+    const generation = screenWakeGeneration;
+    let request;
+    try {
+      request = Promise.resolve(navigator.wakeLock.request('screen'));
+    } catch (_) {
+      setWakeStatus('⚠️ スリープ防止を有効にできませんでした。', true);
+      return;
+    }
+    screenWakeRequest = request;
+    setWakeStatus('☀️ スリープ防止を準備中…');
+    void request.then(lock => {
+      if (screenWakeRequest === request) screenWakeRequest = null;
+      if (generation !== screenWakeGeneration || !isPlaying || document.hidden) {
+        try { void Promise.resolve(lock.release()).catch(() => {}); } catch (_) {}
+        return;
+      }
+      screenWakeLock = lock;
+      lock.addEventListener('release', () => {
+        if (screenWakeLock !== lock) return;
+        screenWakeLock = null;
+        if (isPlaying && !document.hidden) {
+          setWakeStatus('⚠️ スリープ防止が解除されました。画面をタップすると再試行します。', true);
+        }
+      });
+      setWakeStatus('☀️ 再生中は画面の自動スリープを防止しています');
+    }).catch(() => {
+      if (screenWakeRequest === request) screenWakeRequest = null;
+      if (generation === screenWakeGeneration && isPlaying && !document.hidden) {
+        setWakeStatus('⚠️ スリープ防止を有効にできませんでした。iPhoneの自動ロック設定をご確認ください。', true);
+      }
+    });
+  }
+
   function setProgress(fraction) {
     const percent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
     ui.progressFill.style.width = `${percent}%`;
@@ -1709,6 +1777,8 @@
     if (!value) { updateModeInfo(); updateValidationButtonsOnly(); }
     updateLibraryButtons();
     updateTransportButtons();
+    if (value) acquireScreenWakeLock();
+    else releaseScreenWakeLock();
   }
 
   function updateSettingsSummary() {
@@ -2174,6 +2244,10 @@
   ui.reloadJapaneseVoices.addEventListener('click', refreshVoices);
   ui.previewVoice.addEventListener('click', () => startVoicePreview('en'));
   ui.previewJapanese.addEventListener('click', () => startVoicePreview('ja'));
+  // OSが一時的に起動ロックを外した場合、再生中のタップで再取得を試みる。
+  document.addEventListener('pointerdown', () => {
+    if (isPlaying && !document.hidden && !screenWakeLock && !screenWakeRequest) acquireScreenWakeLock();
+  });
   ui.start.addEventListener('click', startPlayback);
   ui.stop.addEventListener('click', () => stopPlayback());
   ui.pauseResume.addEventListener('click', togglePause);
